@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@theme {
+  --color-navy: #1F2A44;
+  --color-accent: #2E6F6E;
+  --color-bg: #F6F7F9;
+  --color-surface: #ffffff;
+  --color-surface-container: #edeef0;
+  --color-surface-high: #e7e8ea;
+  --color-surface-lowest: #ffffff;
+  --color-on-surface: #191c1e;
+  --color-on-surface-variant: #45464d;
+  --color-on-primary: #ffffff;
+  --color-outline: #76777e;
+  --color-outline-variant: #c6c6ce;
+
+  --color-background: #f6f7f9;
+  --color-foreground: #191c1e;
+  --color-card: #ffffff;
+  --color-card-foreground: #191c1e;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #191c1e;
+  --color-primary: #1F2A44;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #2E6F6E;
+  --color-secondary-foreground: #ffffff;
+  --color-muted: #edeef0;
+  --color-muted-foreground: #45464d;
+  --color-accent: #2E6F6E;
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #ba1a1a;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #c6c6ce;
+  --color-input: #c6c6ce;
+  --color-ring: #2E6F6E;
+  --color-chart-1: #1F2A44;
+  --color-chart-2: #2E6F6E;
+  --color-chart-3: #cd7a2e;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.green { background: #22c55e; }
+.status-dot.yellow { background: #eab308; }
+.status-dot.red { background: #ef4444; }
