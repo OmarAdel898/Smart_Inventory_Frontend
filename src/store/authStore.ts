@@ -1,32 +1,41 @@
 import { create } from 'zustand';
+import { setTokenCookie, removeTokenCookie } from '@/api/client';
 
 export interface User {
   id: string;
-  name: string;
   email: string;
-  role: 'manager' | 'staff';
+  username: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  role: string;
+  isActive: boolean;
 }
 
 interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
-  setAuth: (user: User, token: string) => void;
+  setAuth: (user: User | null, token: string) => void;
   logout: () => void;
+}
+
+function getTokenFromCookie(): string | null {
+  const match = document.cookie.match(/(?:^|;\s*)token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: localStorage.getItem('token'),
-  isAuthenticated: !!localStorage.getItem('token'),
+  token: getTokenFromCookie(),
+  isAuthenticated: !!getTokenFromCookie(),
 
   setAuth: (user, token) => {
-    localStorage.setItem('token', token);
+    setTokenCookie(token);
     set({ user, token, isAuthenticated: true });
   },
 
   logout: () => {
-    localStorage.removeItem('token');
+    removeTokenCookie();
     set({ user: null, token: null, isAuthenticated: false });
   },
 }));
