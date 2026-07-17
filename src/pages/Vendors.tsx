@@ -22,7 +22,7 @@ function getTokenFromCookie(): string | null {
 function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return '—';
+    return '\u2014';
   }
 
   return new Intl.DateTimeFormat('en', {
@@ -32,7 +32,7 @@ function formatDate(value: string): string {
 }
 
 function CellValue({ children }: { children: string | null }) {
-  return <span className={children ? 'text-on-surface' : 'text-on-surface-variant'}>{children || '—'}</span>;
+  return <span className={children ? 'text-on-surface' : 'text-on-surface-variant'}>{children || '\u2014'}</span>;
 }
 
 function LoadingState() {

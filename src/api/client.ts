@@ -36,14 +36,15 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     body: body ? JSON.stringify(body) : undefined,
   });
 
+  const json = await res.json().catch(() => null);
+
   if (!res.ok) {
-    const data = await res.json().catch(() => null);
-    const messages = data?.message;
-    const message = Array.isArray(messages) ? messages[0] : messages || `Request failed (${res.status})`;
-    throw new ApiError(message, res.status, data);
+    const message = json?.meta?.message || json?.message || `Request failed (${res.status})`;
+    throw new ApiError(message, res.status, json?.meta || json);
   }
 
-  return res.json();
+  if (json?.success === true) return json.data as T;
+  return json as T;
 }
 
 export const api = {
