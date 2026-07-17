@@ -117,9 +117,8 @@ export default function Vendors() {
         throw new Error(message);
       }
 
-      const json = await response.json() as { success: boolean; data: Vendor[] };
-      const vendors = json?.success === true ? json.data : json;
-      setVendors(Array.isArray(vendors) ? vendors : []);
+      const data = (await response.json()) as Vendor[];
+      setVendors(Array.isArray(data) ? data : []);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         return;
