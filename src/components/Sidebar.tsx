@@ -6,6 +6,7 @@ const links = [
   { to: '/vendors', label: 'Vendors' },
   { to: '/approvals', label: 'Approvals' },
   { to: '/anomalies', label: 'Anomalies' },
+  { to: '/purchase-orders', label: 'Purchase Orders' },
   { to: '/negotiations', label: 'Negotiations' },
   { to: '/assistant', label: 'Assistant' },
 ];

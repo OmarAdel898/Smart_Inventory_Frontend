@@ -9,6 +9,8 @@ import Approvals from '@/pages/Approvals';
 import Anomalies from '@/pages/Anomalies';
 import Negotiations from '@/pages/Negotiations';
 import Assistant from '@/pages/Assistant';
+import PurchaseOrders from '@/pages/PurchaseOrders';
+import PurchaseOrderDetail from '@/pages/PurchaseOrderDetail';
 
 function AppLayout() {
   return (
@@ -33,6 +35,8 @@ export default function App() {
           <Route path="approvals" element={<Approvals />} />
           <Route path="anomalies" element={<Anomalies />} />
           <Route path="negotiations" element={<Negotiations />} />
+          <Route path="purchase-orders" element={<PurchaseOrders />} />
+          <Route path="purchase-orders/:id" element={<PurchaseOrderDetail />} />
           <Route path="assistant" element={<Assistant />} />
         </Route>
       </Route>
