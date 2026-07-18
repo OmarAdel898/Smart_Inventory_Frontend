@@ -16,6 +16,14 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      '/inventory': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/approvals': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
     },
   },
 })
