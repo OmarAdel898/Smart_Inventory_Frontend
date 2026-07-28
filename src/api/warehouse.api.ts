@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { WarehouseResponse } from '../types';
+import type { WarehouseResponse } from './inventory-types';
 
 export const warehouseApi = {
   list: () => {

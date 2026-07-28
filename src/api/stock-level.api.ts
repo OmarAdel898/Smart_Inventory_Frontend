@@ -1,10 +1,10 @@
 import { api } from './client';
+import type { ApiPaginatedResponse } from '../types';
 import type {
   StockLevelResponse,
   StockLevelQueryParams,
   UpdateStockLevelRequest,
-  ApiPaginatedResponse,
-} from '../types';
+} from './inventory-types';
 
 export const stockLevelApi = {
   list: (params?: StockLevelQueryParams) => {
