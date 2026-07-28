@@ -1,10 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, FileText, Loader2, RefreshCw } from 'lucide-react';
+import {
+  AlertCircle,
+  Clock,
+  Eye,
+  FileText,
+  Filter,
+  Loader2,
+  Package,
+  Plus,
+  RefreshCw,
+  Search,
+  Warehouse as WarehouseIcon,
+  X,
+} from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
-type LineItem = {
+export type LineItem = {
   id: string;
   skuId: string;
   quantity: number;
@@ -12,7 +25,7 @@ type LineItem = {
   total: number;
 };
 
-type PurchaseOrder = {
+export type PurchaseOrder = {
   id: string;
   vendorId: string;
   status: string;
@@ -25,17 +38,24 @@ type PurchaseOrder = {
 
 const API_BASE = 'http://localhost:3000';
 
-const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
-  draft: { bg: 'bg-gray-100', text: 'text-gray-700', dot: 'bg-gray-400' },
-  pending_approval: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-400' },
-  approved: { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
-  sent: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
-  received: { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' },
-  rejected: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
+const STATUS_STYLES: Record<string, { label: string; bg: string; text: string; dot: string }> = {
+  draft: { label: 'Draft', bg: 'bg-gray-100', text: 'text-gray-700', dot: 'bg-gray-400' },
+  pending_approval: { label: 'Pending Approval', bg: 'bg-amber-100', text: 'text-amber-800', dot: 'bg-amber-500' },
+  approved: { label: 'Approved', bg: 'bg-blue-100', text: 'text-blue-800', dot: 'bg-blue-500' },
+  sent: { label: 'Sent', bg: 'bg-indigo-100', text: 'text-indigo-800', dot: 'bg-indigo-500' },
+  received: { label: 'Received', bg: 'bg-green-100', text: 'text-green-800', dot: 'bg-green-500' },
+  rejected: { label: 'Rejected', bg: 'bg-red-100', text: 'text-red-800', dot: 'bg-red-500' },
 };
 
 function getStatusStyle(status: string) {
-  return STATUS_STYLES[status] || STATUS_STYLES.draft;
+  return (
+    STATUS_STYLES[status] || {
+      label: status.replace(/_/g, ' '),
+      bg: 'bg-gray-100',
+      text: 'text-gray-700',
+      dot: 'bg-gray-400',
+    }
+  );
 }
 
 function getToken(): string | null {
@@ -53,52 +73,6 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en', { style: 'currency', currency: 'USD' }).format(amount);
 }
 
-function LoadingState() {
-  return (
-    <div className="py-16 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-      <div className="w-11 h-11 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/40">
-        <Loader2 className="h-5 w-5 animate-spin text-accent" />
-      </div>
-      <div className="text-center">
-        <p className="font-medium text-on-surface">Loading purchase orders</p>
-        <p className="text-sm">Fetching the latest purchase orders from the inventory system.</p>
-      </div>
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="py-16 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-      <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/40">
-        <FileText className="h-5 w-5 text-accent" />
-      </div>
-      <div className="text-center max-w-sm">
-        <p className="font-medium text-on-surface">No purchase orders found</p>
-        <p className="text-sm">There are no purchase orders in the system yet. Create one to get started.</p>
-      </div>
-    </div>
-  );
-}
-
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div className="py-16 flex flex-col items-center justify-center gap-4 text-on-surface-variant">
-      <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center border border-red-200">
-        <AlertCircle className="h-5 w-5 text-red-600" />
-      </div>
-      <div className="text-center max-w-md">
-        <p className="font-medium text-on-surface">Unable to load purchase orders</p>
-        <p className="text-sm">{message}</p>
-      </div>
-      <Button variant="outline" onClick={onRetry} className="gap-2">
-        <RefreshCw className="h-4 w-4" />
-        Try again
-      </Button>
-    </div>
-  );
-}
-
 export default function PurchaseOrders() {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,7 +80,10 @@ export default function PurchaseOrders() {
   const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
 
-  const orderCountLabel = `${orders.length} order${orders.length === 1 ? '' : 's'}`;
+  // Filters state
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [warehouseIdFilter, setWarehouseIdFilter] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   const loadOrders = async (signal?: AbortSignal, isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -115,22 +92,31 @@ export default function PurchaseOrders() {
 
     try {
       const token = getToken();
-      const response = await fetch(`${API_BASE}/purchase-orders`, {
+      const params = new URLSearchParams();
+      if (statusFilter && statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+      if (warehouseIdFilter.trim()) {
+        params.append('warehouseId', warehouseIdFilter.trim());
+      }
+
+      const queryString = params.toString() ? `?${params.toString()}` : '';
+      const response = await fetch(`${API_BASE}/purchase-orders${queryString}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         signal,
       });
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        const message = payload?.message || `Failed to load purchase orders (${response.status})`;
-        throw new Error(message);
+        throw new Error(payload?.message || `Failed to load purchase orders (${response.status})`);
       }
 
-      const body = (await response.json()) as { success: boolean; data: PurchaseOrder[] };
-      setOrders(Array.isArray(body.data) ? body.data : []);
+      const body = await response.json();
+      const list = body?.success === true ? body.data : Array.isArray(body) ? body : [];
+      setOrders(Array.isArray(list) ? list : []);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      setError(err instanceof Error ? err.message : 'Something went wrong while loading purchase orders.');
+      setError(err instanceof Error ? err.message : 'Something went wrong loading purchase orders.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -141,94 +127,280 @@ export default function PurchaseOrders() {
     const controller = new AbortController();
     void loadOrders(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [statusFilter, warehouseIdFilter]);
+
+  // Client-side search filtering
+  const filteredOrders = useMemo(() => {
+    if (!searchTerm.trim()) return orders;
+    const lower = searchTerm.toLowerCase();
+    return orders.filter(
+      (o) =>
+        o.id.toLowerCase().includes(lower) ||
+        o.vendorId.toLowerCase().includes(lower) ||
+        o.status.toLowerCase().includes(lower)
+    );
+  }, [orders, searchTerm]);
+
+  // Calculated KPI statistics
+  const stats = useMemo(() => {
+    const total = orders.length;
+    const pending = orders.filter((o) => o.status === 'pending_approval').length;
+    const approved = orders.filter((o) => o.status === 'approved' || o.status === 'sent').length;
+    const totalValue = orders.reduce((sum, o) => {
+      return sum + o.lineItems.reduce((s, li) => s + Number(li.total || 0), 0);
+    }, 0);
+    return { total, pending, approved, totalValue };
+  }, [orders]);
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-medium text-accent">Procurement</p>
+          <p className="text-sm font-medium text-accent">Procurement Lifecycle</p>
           <h1 className="text-3xl font-semibold tracking-tight text-on-surface">Purchase Orders</h1>
           <p className="mt-1 text-sm text-on-surface-variant">
-            Manage and track purchase orders through their full lifecycle.
+            Manage and monitor supplier orders, approval workflows, and receiving status.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="inline-flex items-center gap-3 rounded-xl border border-outline-variant/70 bg-surface px-4 py-3 shadow-sm">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 text-accent">
-              <FileText className="h-4 w-4" />
-            </div>
-            <div className="leading-tight">
-              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-on-surface-variant">Total Orders</p>
-              <p className="text-base font-semibold text-on-surface">{orderCountLabel}</p>
-            </div>
-          </div>
-          <Button variant="outline" onClick={() => loadOrders(undefined, true)} disabled={loading || refreshing} className="gap-2">
+          <Button
+            variant="outline"
+            onClick={() => loadOrders(undefined, true)}
+            disabled={loading || refreshing}
+            className="gap-2"
+          >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
       </div>
 
+      {/* KPI Bento Cards Bar */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-surface-container-lowest border border-outline-variant/70 p-4 rounded-xl relative overflow-hidden shadow-sm">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-accent" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+            Total Orders
+          </p>
+          <div className="flex items-baseline justify-between mt-2">
+            <span className="text-2xl font-bold text-on-surface">{stats.total}</span>
+            <FileText className="h-5 w-5 text-accent/60" />
+          </div>
+        </div>
+
+        <div className="bg-surface-container-lowest border border-outline-variant/70 p-4 rounded-xl relative overflow-hidden shadow-sm">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-amber-500" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+            Pending Approval
+          </p>
+          <div className="flex items-baseline justify-between mt-2">
+            <span className="text-2xl font-bold text-amber-700">{stats.pending}</span>
+            <Clock className="h-5 w-5 text-amber-500/60" />
+          </div>
+        </div>
+
+        <div className="bg-surface-container-lowest border border-outline-variant/70 p-4 rounded-xl relative overflow-hidden shadow-sm">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-blue-500" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+            Active / Approved
+          </p>
+          <div className="flex items-baseline justify-between mt-2">
+            <span className="text-2xl font-bold text-blue-700">{stats.approved}</span>
+            <Package className="h-5 w-5 text-blue-500/60" />
+          </div>
+        </div>
+
+        <div className="bg-surface-container-lowest border border-outline-variant/70 p-4 rounded-xl relative overflow-hidden shadow-sm">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-emerald-500" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+            Total Order Value
+          </p>
+          <div className="flex items-baseline justify-between mt-2">
+            <span className="text-2xl font-bold text-emerald-700">{formatCurrency(stats.totalValue)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Bar */}
+      <Card className="border-outline-variant/60 shadow-sm">
+        <CardContent className="p-4 flex flex-wrap items-center gap-4">
+          {/* Status Tab Pills */}
+          <div className="flex flex-wrap items-center bg-surface-container border border-outline-variant/70 rounded-lg p-1 gap-1">
+            {[
+              { id: 'all', label: 'All' },
+              { id: 'draft', label: 'Draft' },
+              { id: 'pending_approval', label: 'Pending' },
+              { id: 'approved', label: 'Approved' },
+              { id: 'sent', label: 'Sent' },
+              { id: 'received', label: 'Received' },
+              { id: 'rejected', label: 'Rejected' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setStatusFilter(tab.id)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                  statusFilter === tab.id
+                    ? 'bg-surface text-primary shadow-sm'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
+            <input
+              type="text"
+              placeholder="Search PO ID or Vendor ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-1.5 text-sm bg-surface-container-low border border-outline-variant rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20"
+            />
+          </div>
+
+          {/* Warehouse ID Filter Input */}
+          <div className="relative w-60">
+            <WarehouseIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
+            <input
+              type="text"
+              placeholder="Filter by Warehouse ID..."
+              value={warehouseIdFilter}
+              onChange={(e) => setWarehouseIdFilter(e.target.value)}
+              className="w-full pl-9 pr-8 py-1.5 text-sm font-mono bg-surface border border-outline-variant rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20"
+            />
+            {warehouseIdFilter && (
+              <button
+                onClick={() => setWarehouseIdFilter('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Directory Table */}
       <Card className="overflow-hidden border-outline-variant/60 shadow-sm">
         <CardHeader className="border-b border-outline-variant/50 bg-surface">
           <CardTitle className="text-xl text-on-surface">Order Directory</CardTitle>
-          <CardDescription>Full list of purchase orders with status tracking.</CardDescription>
+          <CardDescription>
+            Showing {filteredOrders.length} of {orders.length} purchase orders
+          </CardDescription>
         </CardHeader>
 
         <CardContent className="p-0">
           {loading ? (
-            <LoadingState />
+            <div className="py-16 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
+              <Loader2 className="h-6 w-6 animate-spin text-accent" />
+              <p className="font-medium text-on-surface">Loading purchase orders...</p>
+            </div>
           ) : error ? (
-            <ErrorState message={error} onRetry={() => loadOrders()} />
-          ) : orders.length === 0 ? (
-            <EmptyState />
+            <div className="py-16 flex flex-col items-center justify-center gap-4 text-on-surface-variant">
+              <AlertCircle className="h-6 w-6 text-red-600" />
+              <p className="text-sm text-on-surface">{error}</p>
+              <Button variant="outline" onClick={() => loadOrders(undefined, true)}>
+                Try again
+              </Button>
+            </div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="py-16 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
+              <FileText className="h-8 w-8 text-accent/50" />
+              <p className="font-medium text-on-surface">No purchase orders found.</p>
+              <p className="text-xs">Try adjusting your status or warehouse filter.</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-[800px] w-full border-separate border-spacing-0">
+              <table className="min-w-[900px] w-full border-separate border-spacing-0">
                 <thead>
                   <tr className="bg-surface-container/70">
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">ID</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Vendor</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Status</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Line Items</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Total</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Created</th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                      PO ID
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                      Vendor ID
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                      Status
+                    </th>
+                    <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                      Line Items
+                    </th>
+                    <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                      Total Amount
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                      Created Date
+                    </th>
+                    <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                      Action
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-surface">
-                  {orders.map((order, index) => {
+                  {filteredOrders.map((order, index) => {
                     const style = getStatusStyle(order.status);
+                    const totalVal = order.lineItems.reduce((sum, li) => sum + Number(li.total || 0), 0);
                     return (
                       <tr
                         key={order.id}
-                        className={`border-t border-outline-variant/40 transition-colors hover:bg-surface-container/40 cursor-pointer ${
+                        onClick={() => navigate(`/purchase-orders/${order.id}`)}
+                        className={`border-t border-outline-variant/40 transition-colors hover:bg-surface-container/40 cursor-pointer group ${
                           index % 2 === 0 ? 'bg-surface' : 'bg-surface-lowest'
                         }`}
-                        onClick={() => navigate(`/purchase-orders/${order.id}`)}
                       >
                         <td className="px-6 py-4 align-top">
-                          <div className="font-medium text-accent font-mono text-sm">{order.id.slice(0, 8)}</div>
-                          <div className="mt-1 text-xs text-on-surface-variant">Full ID: {order.id.slice(0, 12)}…</div>
+                          <div className="font-mono text-sm font-semibold text-accent group-hover:underline">
+                            {order.id.slice(0, 8)}
+                          </div>
+                          <div className="text-[11px] text-on-surface-variant font-mono">
+                            {order.id.slice(0, 18)}…
+                          </div>
                         </td>
-                        <td className="px-6 py-4 align-top text-sm font-medium text-on-surface font-mono">
-                          {order.vendorId.slice(0, 8)}
+
+                        <td className="px-6 py-4 align-top text-xs font-mono text-on-surface">
+                          {order.vendorId.slice(0, 12)}…
                         </td>
+
                         <td className="px-6 py-4 align-top">
-                          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${style.bg} ${style.text}`}>
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${style.bg} ${style.text}`}
+                          >
                             <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-                            {order.status.replace(/_/g, ' ')}
+                            {style.label}
                           </span>
                         </td>
-                        <td className="px-6 py-4 align-top text-sm text-right text-on-surface">
-                          {order.lineItems.length}
+
+                        <td className="px-6 py-4 align-top text-sm text-right font-medium text-on-surface">
+                          {order.lineItems.length} {order.lineItems.length === 1 ? 'item' : 'items'}
                         </td>
-                        <td className="px-6 py-4 align-top text-sm text-right font-semibold text-on-surface">
-                          {formatCurrency(order.lineItems.reduce((sum, li) => sum + Number(li.total), 0))}
+
+                        <td className="px-6 py-4 align-top text-sm text-right font-bold text-on-surface font-mono">
+                          {formatCurrency(totalVal)}
                         </td>
-                        <td className="px-6 py-4 align-top text-sm text-on-surface-variant">
+
+                        <td className="px-6 py-4 align-top text-xs text-on-surface-variant">
                           {formatDate(order.createdAt)}
+                        </td>
+
+                        <td className="px-6 py-4 align-top text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/purchase-orders/${order.id}`);
+                            }}
+                            className="h-8 gap-1 text-xs hover:bg-surface-container-high"
+                          >
+                            <Eye className="h-3.5 w-3.5 text-accent" />
+                            View
+                          </Button>
                         </td>
                       </tr>
                     );
