@@ -12,6 +12,7 @@ import Negotiations from '@/pages/Negotiations';
 import Assistant from '@/pages/Assistant';
 import PurchaseOrders from '@/pages/PurchaseOrders';
 import PurchaseOrderDetail from '@/pages/PurchaseOrderDetail';
+import Users from '@/pages/Users';
 
 function AppLayout() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<Dashboard />} />
+          <Route path="users" element={<Users />} />
           <Route path="inventory" element={<Inventory />} />
           <Route path="vendors" element={<Vendors />} />
           <Route path="approvals" element={<Approvals />} />
