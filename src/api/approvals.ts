@@ -1,4 +1,6 @@
 import type { Approval, PaginationMeta } from '@/pages/ApprovalQueue/types';
+import { useAuthStore } from '@/store/authStore';
+import { getRolePermissions } from '@/config/permissions';
 
 const BASE_URL = import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL || '';
 
@@ -40,7 +42,17 @@ export async function fetchApprovals(params: { agentType?: string; page?: number
   return handleResponse<ApprovalsApiResponse>(res);
 }
 
+function assertPermission(allowed: boolean, action: string): void {
+  if (!allowed) {
+    throw new Error(`Access denied: you do not have permission to ${action} approval requests.`);
+  }
+}
+
 export async function approveApproval(id: string, body: { reviewedBy: string; editedPayload?: object }) {
+  const user = useAuthStore.getState().user;
+  const perms = getRolePermissions(user?.role || '');
+  assertPermission(perms.includes('approvals.approve'), 'approve');
+
   const res = await fetch(`${BASE_URL}/approvals/${id}/approve`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
@@ -50,6 +62,10 @@ export async function approveApproval(id: string, body: { reviewedBy: string; ed
 }
 
 export async function rejectApproval(id: string, body: { reviewedBy: string }) {
+  const user = useAuthStore.getState().user;
+  const perms = getRolePermissions(user?.role || '');
+  assertPermission(perms.includes('approvals.reject'), 'reject');
+
   const res = await fetch(`${BASE_URL}/approvals/${id}/reject`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },

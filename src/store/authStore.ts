@@ -24,18 +24,37 @@ function getTokenFromCookie(): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+function loadUser(): User | null {
+  try {
+    const raw = localStorage.getItem('user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveUser(user: User | null): void {
+  if (user) {
+    localStorage.setItem('user', JSON.stringify(user));
+  } else {
+    localStorage.removeItem('user');
+  }
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
+  user: loadUser(),
   token: getTokenFromCookie(),
   isAuthenticated: !!getTokenFromCookie(),
 
   setAuth: (user, token) => {
     setTokenCookie(token);
+    saveUser(user);
     set({ user, token, isAuthenticated: true });
   },
 
   logout: () => {
     removeTokenCookie();
+    saveUser(null);
     set({ user: null, token: null, isAuthenticated: false });
   },
 }));

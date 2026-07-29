@@ -1,5 +1,6 @@
 import type { Approval } from '@/pages/ApprovalQueue/types';
 import { formatAgentType, formatStep, formatStatus, formatRequestId, formatDate } from '@/pages/ApprovalQueue/types';
+import { usePermissions } from '@/hooks/useCan';
 
 interface ApprovalRowProps {
   approval: Approval;
@@ -23,6 +24,9 @@ const statusStyles: Record<string, string> = {
 };
 
 export default function ApprovalRow({ approval, onClick }: ApprovalRowProps) {
+  const { can } = usePermissions();
+  const canReview = can('approvals.approve') || can('approvals.reject');
+
   return (
     <tr
       className="hover:bg-surface-container-low transition-colors cursor-pointer group"
@@ -49,7 +53,7 @@ export default function ApprovalRow({ approval, onClick }: ApprovalRowProps) {
       </td>
       <td className="px-6 py-4 font-mono-data text-[13px] text-on-surface-variant">{formatDate(approval.createdAt)}</td>
       <td className="px-6 py-4 text-right">
-        {approval.status === 'pending' ? (
+        {approval.status === 'pending' && canReview ? (
           <button
             onClick={(e) => { e.stopPropagation(); onClick(); }}
             className="px-4 py-1.5 text-body-sm font-bold bg-primary text-white rounded hover:bg-primary-container transition-all active:scale-95 shadow-sm"

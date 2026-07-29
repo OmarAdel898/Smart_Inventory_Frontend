@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { approveApproval, rejectApproval } from '@/api/approvals';
 import { useAuthStore } from '@/store/authStore';
+import { usePermissions } from '@/hooks/useCan';
 import type { Approval } from '@/pages/ApprovalQueue/types';
 import { formatAgentType, formatDate, getProposedValue, getConfidenceScore, formatRequestId } from '@/pages/ApprovalQueue/types';
 
@@ -18,6 +19,10 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
   const [editedPayloadRaw, setEditedPayloadRaw] = useState('');
   const [copied, setCopied] = useState(false);
   const user = useAuthStore((s) => s.user);
+  const { can } = usePermissions();
+  const canApprove = can('approvals.approve');
+  const canReject = can('approvals.reject');
+  const canEditPayload = can('approvals.editPayload');
 
   const handleApprove = useCallback(async () => {
     if (!approval) return;
@@ -147,45 +152,64 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
               </section>
 
               <section>
-                <h4 className="text-headline-sm font-semibold text-on-surface mb-3">Approval Comments / Payload Edit</h4>
-                <textarea
-                  value={editedPayloadRaw}
-                  onChange={(e) => setEditedPayloadRaw(e.target.value)}
-                  className="w-full h-32 bg-surface-container-low border border-outline-variant rounded-lg p-4 text-body-md focus:ring-secondary focus:border-secondary transition-all resize-none font-mono-data text-[13px]"
-                  placeholder='Optional: Enter JSON to merge into the payload, e.g. {"priority": "HIGH"}'
-                />
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-headline-sm font-semibold text-on-surface">Approval Comments / Payload Edit</h4>
+                    {!canEditPayload && (
+                      <span className="material-symbols-outlined text-[18px] text-outline">lock</span>
+                    )}
+                  </div>
+                </div>
+                {canEditPayload ? (
+                  <textarea
+                    value={editedPayloadRaw}
+                    onChange={(e) => setEditedPayloadRaw(e.target.value)}
+                    className="w-full h-32 bg-surface-container-low border border-outline-variant rounded-lg p-4 text-body-md focus:ring-secondary focus:border-secondary transition-all resize-none font-mono-data text-[13px]"
+                    placeholder='Optional: Enter JSON to merge into the payload, e.g. {"priority": "HIGH"}'
+                  />
+                ) : (
+                  <div className="w-full h-32 bg-surface-container-lowest border border-outline-variant rounded-lg p-4 font-mono-data text-[13px] text-on-surface/70 overflow-y-auto">
+                    <pre className="whitespace-pre-wrap">{JSON.stringify(approval.payload, null, 2)}</pre>
+                  </div>
+                )}
                 <p className="text-[11px] text-on-surface-variant mt-2 italic">
                   Submitting with edits will re-run agent validation before execution.
                 </p>
               </section>
             </div>
 
-            <div className="p-6 border-t border-outline-variant bg-surface-container-low flex gap-4 shrink-0">
-              <button
-                onClick={handleReject}
-                disabled={rejecting || approving}
-                className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-500/10 flex items-center justify-center gap-2 active:scale-95 duration-200 disabled:opacity-60"
-              >
-                {rejecting ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-                ) : (
-                  <span className="material-symbols-outlined">close</span>
+            {canApprove || canReject ? (
+              <div className="p-6 border-t border-outline-variant bg-surface-container-low flex gap-4 shrink-0">
+                {canReject && (
+                  <button
+                    onClick={handleReject}
+                    disabled={rejecting || approving}
+                    className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-500/10 flex items-center justify-center gap-2 active:scale-95 duration-200 disabled:opacity-60"
+                  >
+                    {rejecting ? (
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                    ) : (
+                      <span className="material-symbols-outlined">close</span>
+                    )}
+                    Reject
+                  </button>
                 )}
-                Reject
-              </button>
-              <button
-                onClick={handleApprove}
-                disabled={approving || rejecting}
-                className="flex-1 px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors shadow-lg shadow-green-500/10 flex items-center justify-center gap-2 active:scale-95 duration-200 disabled:opacity-60"
-              >
-                {approving ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-                ) : (
-                  <span className="material-symbols-outlined">check_circle</span>
+                {canApprove && (
+                  <button
+                    onClick={handleApprove}
+                    disabled={approving || rejecting}
+                    className="flex-1 px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors shadow-lg shadow-green-500/10 flex items-center justify-center gap-2 active:scale-95 duration-200 disabled:opacity-60"
+                  >
+                    {approving ? (
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                    ) : (
+                      <span className="material-symbols-outlined">check_circle</span>
+                    )}
+                    Approve
+                  </button>
                 )}
-                Approve
-              </button>
-            </div>
+              </div>
+            ) : null}
           </>
         )}
       </div>
