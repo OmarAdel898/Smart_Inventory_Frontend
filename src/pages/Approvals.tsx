@@ -1,3 +1,5 @@
+import ApprovalQueuePage from '@/pages/ApprovalQueue/ApprovalQueuePage';
+
 export default function Approvals() {
-  return <div>Approvals</div>;
+  return <ApprovalQueuePage />;
 }
