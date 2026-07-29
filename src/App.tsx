@@ -5,15 +5,8 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import RequirePermission from '@/components/RequirePermission';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
-import Inventory from '@/pages/Inventory';
-import Vendors from '@/pages/Vendors';
-import Approvals from '@/pages/Approvals';
-import Anomalies from '@/pages/Anomalies';
-import Negotiations from '@/pages/Negotiations';
-import Assistant from '@/pages/Assistant';
-import PurchaseOrders from '@/pages/PurchaseOrders';
-import PurchaseOrderDetail from '@/pages/PurchaseOrderDetail';
-import Users from '@/pages/Users';
+import BranchDashboard from '@/pages/BranchDashboard';
+import { useAuthStore } from '@/store/authStore';
 
 function AppLayout() {
   return (
@@ -27,6 +20,14 @@ function AppLayout() {
       </div>
     </div>
   );
+}
+
+function RootDashboard() {
+  const user = useAuthStore((s) => s.user);
+  if (user?.role === 'branch_manager' || user?.role === 'warehouse_manager') {
+    return <BranchDashboard />;
+  }
+  return <Dashboard />;
 }
 
 export default function App() {
