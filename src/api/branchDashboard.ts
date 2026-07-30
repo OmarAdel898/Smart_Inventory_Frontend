@@ -1,21 +1,16 @@
-const BASE_URL = import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL || '';
+import { requestJson } from './_shared';
 
-function getToken(): string | null {
-  const match = document.cookie.match(/(?:^|;\s*)token=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
-function authHeaders(): Record<string, string> {
-  const token = getToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  const json = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new Error(json?.meta?.message || json?.message || json?.error || `Request failed (${res.status})`);
-  }
-  return json as T;
+export interface WarehouseDetails {
+  id: string;
+  name: string;
+  code?: string | null;
+  managerName?: string | null;
+  managerEmail?: string | null;
+  address?: string | null;
+  city?: string | null;
+  phone?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface StockLevel {
@@ -23,10 +18,32 @@ export interface StockLevel {
   skuId: string;
   skuName: string;
   warehouseId: string;
-  warehouseName: string;
+  warehouseName?: string;
   quantity: number;
   reorderThreshold: number;
   safetyStock: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PurchaseOrderSummary {
+  id: string;
+  vendorId: string;
+  vendorName?: string | null;
+  status: string;
+  lineItemCount?: number;
+  totalAmount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApprovalSummary {
+  id: string;
+  agentRunId: string;
+  agentType: string;
+  stepNumber: number;
+  status: string;
+  reasoning?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -34,46 +51,72 @@ export interface StockLevel {
 export interface StockMovement {
   id: string;
   skuId: string;
-  skuCode: string | null;
-  skuName: string | null;
+  skuCode?: string | null;
+  skuName?: string | null;
   warehouseId: string;
   reason: string;
   quantityChange: number;
   balanceAfter: number;
-  performedByUserId: string | null;
-  performedByAgent: string | null;
-  note: string | null;
+  performedByUserId?: string | null;
+  performedByAgent?: string | null;
+  note?: string | null;
   createdAt: string;
 }
 
-export interface DashboardData {
-  lowStockCount: number;
+export interface BranchDashboardSnapshot {
+  warehouse: WarehouseDetails | null;
   lowStockItems: StockLevel[];
-  totalStockItems: number;
-  totalUnits: number;
-  pendingPoCount: number;
+  stockLevels: StockLevel[];
+  pendingPurchaseOrders: PurchaseOrderSummary[];
+  pendingApprovals: ApprovalSummary[];
   recentMovements: StockMovement[];
+  selectedSkuId: string | null;
 }
 
-export async function fetchBranchDashboard(warehouseId: string): Promise<DashboardData> {
-  const headers = authHeaders();
+function unwrapList<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (value && typeof value === 'object' && Array.isArray((value as { data?: unknown }).data)) {
+    return (value as { data: T[] }).data;
+  }
+  return [];
+}
 
-  const [lowStockRes, stockLevelsRes, poRes, movementsRes] = await Promise.all([
-    fetch(`${BASE_URL}/warehouses/${warehouseId}/stock-levels/low-stock`, { headers }).then(handleResponse<{ success: boolean; data: StockLevel[] }>),
-    fetch(`${BASE_URL}/warehouses/${warehouseId}/stock-levels?page=1&limit=1`, { headers }).then(handleResponse<{ success: boolean; data: StockLevel[]; meta: { total: number } }>),
-    fetch(`${BASE_URL}/purchase-orders?page=1&limit=1`, { headers }).then(handleResponse<{ success: boolean; data: unknown[]; meta: { total: number } }>),
-    fetch(`${BASE_URL}/inventory/stock-movements?warehouseId=${warehouseId}&limit=10`, { headers }).then(handleResponse<{ success: boolean; data: StockMovement[] }>),
+function unwrapOne<T>(value: unknown): T | null {
+  if (value && typeof value === 'object') {
+    if ('data' in value) {
+      return ((value as { data?: T }).data ?? null) as T | null;
+    }
+    return value as T;
+  }
+  return null;
+}
+
+export async function fetchBranchDashboardSnapshot(warehouseId: string): Promise<BranchDashboardSnapshot> {
+  const [warehouse, lowStockItems, stockLevels, pendingPurchaseOrders, pendingApprovals] = await Promise.all([
+    requestJson<unknown>(`/warehouses/${warehouseId}`),
+    requestJson<unknown>(`/stock-levels/low-stock?warehouseId=${warehouseId}`),
+    requestJson<unknown>(`/stock-levels?warehouseId=${warehouseId}`),
+    requestJson<unknown>(`/purchase-orders?warehouseId=${warehouseId}&status=pending`),
+    requestJson<unknown>(`/approvals?status=pending`),
   ]);
 
-  const lowStockData = lowStockRes.data || [];
-  const totalUnits = lowStockData.reduce((sum, item) => sum + item.quantity, 0);
+  const normalizedStockLevels = unwrapList<StockLevel>(stockLevels);
+  const normalizedLowStock = unwrapList<StockLevel>(lowStockItems);
+  const normalizedPendingPOs = unwrapList<PurchaseOrderSummary>(pendingPurchaseOrders);
+  const normalizedPendingApprovals = unwrapList<ApprovalSummary>(pendingApprovals);
 
   return {
-    lowStockCount: lowStockData.length,
-    lowStockItems: lowStockData,
-    totalStockItems: stockLevelsRes.meta?.total || 0,
-    totalUnits,
-    pendingPoCount: poRes.meta?.total || 0,
-    recentMovements: movementsRes.data || [],
+    warehouse: unwrapOne<WarehouseDetails>(warehouse),
+    lowStockItems: normalizedLowStock,
+    stockLevels: normalizedStockLevels,
+    pendingPurchaseOrders: normalizedPendingPOs,
+    pendingApprovals: normalizedPendingApprovals,
+    recentMovements: [],
+    selectedSkuId: normalizedLowStock[0]?.skuId || normalizedStockLevels[0]?.skuId || null,
   };
+}
+
+export async function fetchRecentMovementsBySku(skuId: string): Promise<StockMovement[]> {
+  const data = await requestJson<unknown>(`/inventory/stock-movements/sku/${skuId}`);
+  return unwrapList<StockMovement>(data);
 }

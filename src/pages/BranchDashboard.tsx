@@ -1,261 +1,569 @@
-import { useEffect, useState } from 'react';
-import { fetchBranchDashboard } from '@/api/branchDashboard';
-import type { DashboardData } from '@/api/branchDashboard';
+import { useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import {
+  AlertCircle,
+  BarChart3,
+  Clock3,
+  Loader2,
+  Package,
+  RefreshCw,
+  Warehouse,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getAccessTokenFromCookie, getWarehouseIdFromToken } from '@/lib/auth';
+import {
+  fetchBranchDashboardSnapshot,
+  fetchRecentMovementsBySku,
+  type ApprovalSummary,
+  type BranchDashboardSnapshot,
+  type PurchaseOrderSummary,
+  type StockLevel,
+  type StockMovement,
+} from '@/api/branchDashboard';
 
-const REASON_TYPE_MAP: Record<string, { label: string; icon: string; color: string; badge: { bg: string; text: string } }> = {
-  purchase_order_receipt: { label: 'Inbound', icon: 'south_east', color: 'text-secondary', badge: { bg: 'bg-green-100', text: 'text-green-800' } },
-  customer_return: { label: 'Inbound', icon: 'south_east', color: 'text-secondary', badge: { bg: 'bg-green-100', text: 'text-green-800' } },
-  agent_reorder: { label: 'Inbound', icon: 'south_east', color: 'text-secondary', badge: { bg: 'bg-green-100', text: 'text-green-800' } },
-  sale: { label: 'Outbound', icon: 'north_east', color: 'text-error', badge: { bg: 'bg-blue-100', text: 'text-blue-800' } },
-  write_off: { label: 'Outbound', icon: 'north_east', color: 'text-error', badge: { bg: 'bg-blue-100', text: 'text-blue-800' } },
-  supplier_return: { label: 'Outbound', icon: 'north_east', color: 'text-error', badge: { bg: 'bg-blue-100', text: 'text-blue-800' } },
-  transfer_in: { label: 'Internal', icon: 'sync_alt', color: 'text-tertiary-container', badge: { bg: 'bg-green-100', text: 'text-green-800' } },
-  transfer_out: { label: 'Internal', icon: 'sync_alt', color: 'text-tertiary-container', badge: { bg: 'bg-blue-100', text: 'text-blue-800' } },
-  manual_adjustment: { label: 'Adjustment', icon: 'tune', color: 'text-[#F59E0B]', badge: { bg: 'bg-orange-100', text: 'text-orange-800' } },
-};
-
-function getReasonMapping(reason: string) {
-  return REASON_TYPE_MAP[reason] || { label: reason, icon: 'swap_horiz', color: 'text-on-surface-variant', badge: { bg: 'bg-gray-100', text: 'text-gray-800' } };
+function formatNumber(value: number): string {
+  return new Intl.NumberFormat('en').format(value);
 }
 
-function formatTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+function formatCurrency(value: number | undefined): string {
+  return new Intl.NumberFormat('en', { style: 'currency', currency: 'USD' }).format(value || 0);
 }
 
-function formatNumber(n: number): string {
-  return n.toLocaleString('en');
+function formatDate(value?: string): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
-function getSkuDisplay(movement: { skuCode?: string | null; skuName?: string | null; skuId: string; note?: string | null }): { code: string; name: string } {
-  const code = movement.skuCode || movement.skuId.substring(0, 8).toUpperCase();
-  const name = movement.skuName || movement.note || movement.skuId;
-  return { code, name };
+function shortId(value: string): string {
+  return value.length > 10 ? `${value.slice(0, 10)}…` : value;
+}
+
+function StatusPill({ value, tone }: { value: string; tone: 'red' | 'amber' | 'green' | 'slate' }) {
+  const styles = {
+    red: 'bg-red-100 text-red-800',
+    amber: 'bg-amber-100 text-amber-800',
+    green: 'bg-emerald-100 text-emerald-800',
+    slate: 'bg-slate-100 text-slate-700',
+  };
+
+  return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${styles[tone]}`}>{value}</span>;
+}
+
+function lowStockTone(quantity: number, threshold: number): 'red' | 'amber' | 'green' {
+  if (quantity <= 0 || quantity <= threshold) return 'red';
+  if (quantity <= threshold + 10) return 'amber';
+  return 'green';
+}
+
+function movementTone(change: number): 'red' | 'green' {
+  return change >= 0 ? 'green' : 'red';
+}
+
+function SectionCard({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string;
+  description: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <Card className="border-outline-variant/60 shadow-sm overflow-hidden">
+      <CardHeader className="border-b border-outline-variant/50 bg-surface flex flex-row items-start justify-between gap-4">
+        <div>
+          <CardTitle className="text-xl text-on-surface">{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </div>
+        {action}
+      </CardHeader>
+      <CardContent className="p-0">{children}</CardContent>
+    </Card>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="py-10 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
+      <div className="w-11 h-11 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/40">
+        <Package className="h-5 w-5 text-accent" />
+      </div>
+      <p className="text-sm text-center max-w-sm">{message}</p>
+    </div>
+  );
+}
+
+function LoadingState({ label }: { label: string }) {
+  return (
+    <div className="py-10 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
+      <Loader2 className="h-6 w-6 animate-spin text-accent" />
+      <p className="text-sm font-medium text-on-surface">{label}</p>
+    </div>
+  );
 }
 
 export default function BranchDashboard() {
-  const [data, setData] = useState<DashboardData | null>(null);
+  const warehouseId = getWarehouseIdFromToken(getAccessTokenFromCookie());
+  const [snapshot, setSnapshot] = useState<BranchDashboardSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const warehouseId = '00000000-0000-0000-0000-000000000001';
+  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [movementsLoading, setMovementsLoading] = useState(false);
+  const [movementsError, setMovementsError] = useState<string | null>(null);
+  const [selectedSkuId, setSelectedSkuId] = useState<string>('');
+
+  const lowStockItems = snapshot?.lowStockItems || [];
+  const stockLevels = snapshot?.stockLevels || [];
+  const pendingPurchaseOrders = snapshot?.pendingPurchaseOrders || [];
+  const pendingApprovals = snapshot?.pendingApprovals || [];
+
+  const totalUnits = useMemo(
+    () => stockLevels.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+    [stockLevels],
+  );
+
+  const totalReorderGap = useMemo(
+    () => stockLevels.reduce((sum, item) => sum + Math.max(0, Number(item.reorderThreshold || 0) - Number(item.quantity || 0)), 0),
+    [stockLevels],
+  );
+
+  const loadSnapshot = async (isRefresh = false) => {
+    if (!warehouseId) {
+      setError('No warehouse assignment found in the current access token.');
+      setLoading(false);
+      return;
+    }
+
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    setError(null);
+
+    try {
+      const data = await fetchBranchDashboardSnapshot(warehouseId);
+      setSnapshot(data);
+      const nextSku = data.selectedSkuId || '';
+      setSelectedSkuId(nextSku);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load warehouse dashboard.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const loadMovements = async (skuId: string) => {
+    if (!warehouseId || !skuId) {
+      setMovements([]);
+      return;
+    }
+
+    setMovementsLoading(true);
+    setMovementsError(null);
+
+    try {
+      const data = await fetchRecentMovementsBySku(skuId);
+      setMovements(data);
+    } catch (err) {
+      setMovementsError(err instanceof Error ? err.message : 'Unable to load recent movements.');
+    } finally {
+      setMovementsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    fetchBranchDashboard(warehouseId)
-      .then((d) => { if (!cancelled) setData(d); })
-      .catch((e) => { if (!cancelled) setError(e.message); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+    void loadSnapshot();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const lowStockItems = data?.lowStockItems || [];
-  const categoryCount = new Set(lowStockItems.map((i) => i.skuName?.split(' ')[0] || '')).size;
+  useEffect(() => {
+    if (!selectedSkuId) {
+      setMovements([]);
+      return;
+    }
+
+    void loadMovements(selectedSkuId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSkuId]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-secondary border-t-transparent" />
-      </div>
-    );
+    return <LoadingState label="Loading warehouse dashboard..." />;
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64 text-destructive text-body-md">
-        {error}
+      <div className="py-16 flex flex-col items-center justify-center gap-4 text-on-surface-variant">
+        <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center border border-red-200">
+          <AlertCircle className="h-5 w-5 text-red-600" />
+        </div>
+        <div className="text-center max-w-md">
+          <p className="font-medium text-on-surface">Unable to load warehouse dashboard</p>
+          <p className="text-sm">{error}</p>
+        </div>
+        <Button variant="outline" onClick={() => loadSnapshot()} className="gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Try again
+        </Button>
       </div>
     );
   }
 
-  return (
-    <div>
-      <div className="mb-8">
-        <h2 className="text-headline-lg text-on-surface mb-1">Operational Overview</h2>
-        <p className="text-on-surface-variant text-body-md">Real-time status for North Distribution Hub (W12)</p>
-      </div>
+  const warehouseName = snapshot?.warehouse?.name || 'Assigned Warehouse';
+  const warehouseCode = snapshot?.warehouse?.code || '—';
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-surface-lowest rounded-lg border border-outline-variant p-6 relative overflow-hidden group hover:border-error transition-colors duration-300">
-          <div className="absolute top-0 left-0 w-full h-[2px] bg-error" />
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-error/10 rounded-lg">
-              <span className="material-symbols-outlined text-error">warning</span>
-            </div>
-            {lowStockItems.length > 0 && (
-              <span className="text-error font-bold text-label-lg">{lowStockItems.length} items</span>
-            )}
-          </div>
-          <p className="text-on-surface-variant text-label-lg font-bold uppercase tracking-wider mb-1">Low Stock</p>
-          <h3 className="text-headline-lg text-on-background">{lowStockItems.length} Items</h3>
-          <p className="text-body-sm text-on-surface-variant mt-2">
-            {lowStockItems.length > 0
-              ? `Critical threshold alerts in ${categoryCount} categor${categoryCount === 1 ? 'y' : 'ies'}`
-              : 'No low stock items'}
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-sm font-medium text-accent">Warehouse Manager Dashboard</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-on-surface">{warehouseName}</h1>
+          <p className="mt-1 text-sm text-on-surface-variant">
+            Live operational snapshot for warehouse {warehouseCode}.
           </p>
         </div>
 
-        <div className="bg-surface-lowest rounded-lg border border-outline-variant p-6 relative overflow-hidden group hover:border-tertiary-container transition-colors duration-300">
-          <div className="absolute top-0 left-0 w-full h-[2px] bg-[#F59E0B]" />
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-tertiary-fixed/30 rounded-lg">
-              <span className="material-symbols-outlined text-tertiary-container">pending_actions</span>
+        <div className="flex items-center gap-3">
+          <div className="inline-flex items-center gap-3 rounded-xl border border-outline-variant/70 bg-surface px-4 py-3 shadow-sm">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 text-accent">
+              <Warehouse className="h-4 w-4" />
             </div>
-            <span className="text-tertiary-container font-bold text-label-lg">
-              {data && data.pendingPoCount > 0 ? `${data.pendingPoCount} pending` : 'All clear'}
-            </span>
-          </div>
-          <p className="text-on-surface-variant text-label-lg font-bold uppercase tracking-wider mb-1">Pending POs</p>
-          <h3 className="text-headline-lg text-on-background">{data?.pendingPoCount || 0} Orders</h3>
-          <p className="text-body-sm text-on-surface-variant mt-2">Awaiting branch manager confirmation</p>
-        </div>
-
-        <div className="bg-surface-lowest rounded-lg border border-outline-variant p-6 relative overflow-hidden group hover:border-secondary transition-colors duration-300">
-          <div className="absolute top-0 left-0 w-full h-[2px] bg-secondary" />
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-secondary/10 rounded-lg">
-              <span className="material-symbols-outlined text-secondary">conveyor_belt</span>
+            <div className="leading-tight">
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-on-surface-variant">
+                Warehouse
+              </p>
+              <p className="text-base font-semibold text-on-surface">{warehouseCode}</p>
             </div>
-            <span className="text-secondary font-bold text-label-lg">
-              {data && data.recentMovements.length > 0 ? `${data.recentMovements.length} events` : 'No data'}
-            </span>
           </div>
-          <p className="text-on-surface-variant text-label-lg font-bold uppercase tracking-wider mb-1">Recent Movements</p>
-          <h3 className="text-headline-lg text-on-background">{formatNumber(data?.totalUnits || 0)} Units</h3>
-          <p className="text-body-sm text-on-surface-variant mt-2">Stock inbound/outbound (Last 24h)</p>
+          <Button variant="outline" onClick={() => loadSnapshot(true)} disabled={refreshing} className="gap-2">
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-12 lg:col-span-8">
-          <div className="bg-surface-lowest rounded-lg border border-outline-variant">
-            <div className="px-6 py-4 border-b border-outline-variant flex justify-between items-center">
-              <div>
-                <h3 className="text-headline-sm text-on-surface">Recent Movements</h3>
-                <p className="text-body-sm text-on-surface-variant">Live log from North Distribution Hub</p>
-              </div>
-              <button className="text-secondary text-label-lg font-bold hover:underline">View All Movements</button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-surface-container-low">
-                    <th className="px-6 py-3 text-label-lg font-bold text-on-surface-variant uppercase tracking-wider">Time</th>
-                    <th className="px-6 py-3 text-label-lg font-bold text-on-surface-variant uppercase tracking-wider">SKU / Item</th>
-                    <th className="px-6 py-3 text-label-lg font-bold text-on-surface-variant uppercase tracking-wider">Type</th>
-                    <th className="px-6 py-3 text-label-lg font-bold text-on-surface-variant uppercase tracking-wider">Qty</th>
-                    <th className="px-6 py-3 text-label-lg font-bold text-on-surface-variant uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant">
-                  {data?.recentMovements.map((movement, i) => {
-                    const mapping = getReasonMapping(movement.reason);
-                    const display = getSkuDisplay(movement);
-                    return (
-                      <tr
-                        key={movement.id || i}
-                        className={`${i % 2 === 0 ? '' : 'bg-surface-container-low/30'} hover:bg-secondary/5 transition-colors group`}
-                      >
-                        <td className="px-6 py-3 font-mono-data text-[13px] text-on-surface">{formatTime(movement.createdAt)}</td>
-                        <td className="px-6 py-3">
-                          <div className="flex flex-col">
-                            <span className="text-body-sm font-bold text-on-surface">{display.code}</span>
-                            <span className="text-label-md text-on-surface-variant">{display.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-3">
-                          <span className={`flex items-center gap-1.5 text-body-sm font-medium ${mapping.color}`}>
-                            <span className="material-symbols-outlined text-[16px]">{mapping.icon}</span>
-                            {mapping.label}
-                          </span>
-                        </td>
-                        <td className="px-6 py-3 font-mono-data text-[13px] font-bold">{formatNumber(Math.abs(movement.quantityChange))}</td>
-                        <td className="px-6 py-3">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${mapping.badge.bg} ${mapping.badge.text}`}>
-                            {movement.quantityChange > 0 ? 'Received' : 'Shipped'}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {(!data?.recentMovements || data.recentMovements.length === 0) && (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-8 text-center text-on-surface-variant text-body-sm">No recent movements</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="bg-surface-container-lowest border border-outline-variant/70 p-4 rounded-xl relative overflow-hidden shadow-sm">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-red-500" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+            Low Stock Items
+          </p>
+          <div className="flex items-baseline justify-between mt-2">
+            <span className="text-2xl font-bold text-on-surface">{lowStockItems.length}</span>
+            <AlertCircle className="h-5 w-5 text-red-500/60" />
           </div>
         </div>
 
-        <div className="col-span-12 lg:col-span-4 space-y-6">
-          <div className="bg-primary-container rounded-lg p-6 text-white shadow-lg overflow-hidden relative">
-            <div className="relative z-10">
-              <h4 className="text-headline-sm mb-4">Branch Load</h4>
-              <div className="flex items-end gap-2 mb-2">
-                <span className="text-3xl font-bold">{data ? Math.min(Math.round(((data.totalStockItems + data.lowStockCount) / 200) * 100), 100) : 0}%</span>
-                <span className="text-secondary-fixed text-label-md mb-1 font-bold">
-                  {data && (data.totalStockItems + data.lowStockCount) > 160 ? 'High Capacity' : data && (data.totalStockItems + data.lowStockCount) > 80 ? 'Moderate' : 'Low Load'}
-                </span>
-              </div>
-              <div className="w-full bg-white/20 rounded-full h-2 mb-6">
-                <div
-                  className="bg-secondary-fixed h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${data ? Math.min(Math.round(((data.totalStockItems + data.lowStockCount) / 200) * 100), 100) : 0}%` }}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-on-primary-container text-label-md uppercase">Active Staff</p>
-                  <p className="text-body-lg font-bold">14 / 16</p>
-                </div>
-                <div>
-                  <p className="text-on-primary-container text-label-md uppercase">Bay Usage</p>
-                  <p className="text-body-lg font-bold">06 / 08</p>
-                </div>
-              </div>
-            </div>
-            <div className="absolute -right-12 -bottom-12 opacity-10">
-              <span className="material-symbols-outlined text-[160px]">warehouse</span>
-            </div>
+        <div className="bg-surface-container-lowest border border-outline-variant/70 p-4 rounded-xl relative overflow-hidden shadow-sm">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-accent" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+            Stock Levels
+          </p>
+          <div className="flex items-baseline justify-between mt-2">
+            <span className="text-2xl font-bold text-on-surface">{stockLevels.length}</span>
+            <BarChart3 className="h-5 w-5 text-accent/60" />
           </div>
+        </div>
 
-          <div className="bg-surface-lowest rounded-lg border border-outline-variant p-6">
-            <h4 className="text-headline-sm text-on-surface mb-4">Quick Actions</h4>
-            <div className="grid grid-cols-1 gap-3">
-              <button className="flex items-center justify-between p-3 rounded-lg border border-outline-variant hover:bg-surface-container-low transition-all text-left w-full">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-secondary">add_box</span>
-                  <div>
-                    <p className="text-body-sm font-bold text-on-surface">New Internal Requisition</p>
-                    <p className="text-label-md text-on-surface-variant">Request stock from main hub</p>
-                  </div>
-                </div>
-                <span className="material-symbols-outlined text-on-surface-variant">chevron_right</span>
-              </button>
-              <button className="flex items-center justify-between p-3 rounded-lg border border-outline-variant hover:bg-surface-container-low transition-all text-left w-full">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-error">inventory</span>
-                  <div>
-                    <p className="text-body-sm font-bold text-on-surface">Emergency Stock Check</p>
-                    <p className="text-label-md text-on-surface-variant">Initiate manual count for sector 12</p>
-                  </div>
-                </div>
-                <span className="material-symbols-outlined text-on-surface-variant">chevron_right</span>
-              </button>
-              <button className="flex items-center justify-between p-3 rounded-lg border border-outline-variant hover:bg-surface-container-low transition-all text-left w-full">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-[#F59E0B]">assignment_return</span>
-                  <div>
-                    <p className="text-body-sm font-bold text-on-surface">Return to Hub</p>
-                    <p className="text-label-md text-on-surface-variant">Process damaged or overstock items</p>
-                  </div>
-                </div>
-                <span className="material-symbols-outlined text-on-surface-variant">chevron_right</span>
-              </button>
-            </div>
+        <div className="bg-surface-container-lowest border border-outline-variant/70 p-4 rounded-xl relative overflow-hidden shadow-sm">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-amber-500" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+            Pending POs
+          </p>
+          <div className="flex items-baseline justify-between mt-2">
+            <span className="text-2xl font-bold text-on-surface">{pendingPurchaseOrders.length}</span>
+            <Package className="h-5 w-5 text-amber-500/60" />
           </div>
+        </div>
+
+        <div className="bg-surface-container-lowest border border-outline-variant/70 p-4 rounded-xl relative overflow-hidden shadow-sm">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-blue-500" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+            Pending Approvals
+          </p>
+          <div className="flex items-baseline justify-between mt-2">
+            <span className="text-2xl font-bold text-on-surface">{pendingApprovals.length}</span>
+            <Clock3 className="h-5 w-5 text-blue-500/60" />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.9fr)] gap-6 items-start">
+        <div className="space-y-6">
+          <SectionCard
+            title="low stock"
+            description="Items at or below the reorder threshold in this warehouse."
+          >
+            {lowStockItems.length === 0 ? (
+              <EmptyState message="No low stock items were returned for this warehouse." />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-[760px] w-full border-separate border-spacing-0">
+                  <thead>
+                    <tr className="bg-surface-container/70">
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">SKU</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Item</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Qty</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Threshold</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-surface">
+                    {lowStockItems.map((item, index) => {
+                      const tone = lowStockTone(item.quantity, item.reorderThreshold);
+                      return (
+                        <tr
+                          key={item.id}
+                          className={`border-t border-outline-variant/40 ${
+                            index % 2 === 0 ? 'bg-surface' : 'bg-surface-lowest'
+                          }`}
+                        >
+                          <td className="px-6 py-4 align-top text-sm font-mono font-semibold text-accent">{shortId(item.skuId)}</td>
+                          <td className="px-6 py-4 align-top">
+                            <div className="font-medium text-on-surface">{item.skuName}</div>
+                            <div className="text-xs text-on-surface-variant">{item.warehouseName || warehouseName}</div>
+                          </td>
+                          <td className="px-6 py-4 align-top text-right">
+                            <StatusPill value={formatNumber(item.quantity)} tone={tone} />
+                          </td>
+                          <td className="px-6 py-4 align-top text-right text-sm text-on-surface-variant">
+                            {formatNumber(item.reorderThreshold)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard
+            title="stock levels"
+            description="Current inventory positions across the assigned warehouse."
+          >
+            {stockLevels.length === 0 ? (
+              <EmptyState message="No stock level records were returned for this warehouse." />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-[860px] w-full border-separate border-spacing-0">
+                  <thead>
+                    <tr className="bg-surface-container/70">
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">SKU</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Name</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Qty</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Safety</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Reorder</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-surface">
+                    {stockLevels.map((item, index) => (
+                      <tr
+                        key={item.id}
+                        className={`border-t border-outline-variant/40 ${
+                          index % 2 === 0 ? 'bg-surface' : 'bg-surface-lowest'
+                        }`}
+                      >
+                        <td className="px-6 py-4 align-top text-sm font-mono font-semibold text-accent">{shortId(item.skuId)}</td>
+                        <td className="px-6 py-4 align-top">
+                          <div className="font-medium text-on-surface">{item.skuName}</div>
+                          <div className="text-xs text-on-surface-variant">{item.warehouseName || warehouseName}</div>
+                        </td>
+                        <td className="px-6 py-4 align-top text-right text-sm font-semibold text-on-surface">
+                          {formatNumber(item.quantity)}
+                        </td>
+                        <td className="px-6 py-4 align-top text-right text-sm text-on-surface-variant">
+                          {formatNumber(item.safetyStock)}
+                        </td>
+                        <td className="px-6 py-4 align-top text-right text-sm text-on-surface-variant">
+                          {formatNumber(item.reorderThreshold)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard
+            title="recent stock movements"
+            description="Movement history for a selected SKU in this warehouse."
+            action={
+              <div className="w-full sm:w-72">
+                <select
+                  value={selectedSkuId}
+                  onChange={(e) => setSelectedSkuId(e.target.value)}
+                  className="w-full h-10 rounded-md border border-outline-variant bg-surface px-3 text-sm shadow-sm outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="">Select SKU</option>
+                  {[...stockLevels, ...lowStockItems]
+                    .filter((item, index, array) => array.findIndex((x) => x.skuId === item.skuId) === index)
+                    .map((item) => (
+                      <option key={item.skuId} value={item.skuId}>
+                        {item.skuName}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            }
+          >
+            {movementsLoading ? (
+              <LoadingState label="Loading stock movements..." />
+            ) : movementsError ? (
+              <div className="py-10 flex flex-col items-center justify-center gap-4 text-on-surface-variant">
+                <AlertCircle className="h-6 w-6 text-red-600" />
+                <p className="text-sm text-center max-w-md">{movementsError}</p>
+              </div>
+            ) : movements.length === 0 ? (
+              <EmptyState message={selectedSkuId ? 'No movements found for the selected SKU.' : 'Choose a SKU to view recent movements.'} />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-[860px] w-full border-separate border-spacing-0">
+                  <thead>
+                    <tr className="bg-surface-container/70">
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Time</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">SKU</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Reason</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Change</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-surface">
+                    {movements.map((movement, index) => {
+                      const tone = movementTone(movement.quantityChange);
+                      const reasonLabel = movement.reason.replace(/_/g, ' ');
+                      return (
+                        <tr
+                          key={movement.id}
+                          className={`border-t border-outline-variant/40 ${
+                            index % 2 === 0 ? 'bg-surface' : 'bg-surface-lowest'
+                          }`}
+                        >
+                          <td className="px-6 py-4 align-top text-xs text-on-surface-variant">
+                            {formatDate(movement.createdAt)}
+                          </td>
+                          <td className="px-6 py-4 align-top">
+                            <div className="font-medium text-on-surface">{movement.skuName || 'Unknown SKU'}</div>
+                            <div className="text-xs font-mono text-on-surface-variant">{shortId(movement.skuId)}</div>
+                          </td>
+                          <td className="px-6 py-4 align-top text-sm text-on-surface-variant">{reasonLabel}</td>
+                          <td className="px-6 py-4 align-top text-right">
+                            <StatusPill value={`${movement.quantityChange > 0 ? '+' : ''}${formatNumber(movement.quantityChange)}`} tone={tone} />
+                          </td>
+                          <td className="px-6 py-4 align-top text-right text-sm font-semibold text-on-surface">
+                            {formatNumber(movement.balanceAfter)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+        </div>
+
+        <div className="space-y-6">
+          <SectionCard title="warehouse details" description="Assigned warehouse information from the decoded token.">
+            <div className="p-6 space-y-4">
+              <div className="rounded-xl border border-outline-variant/60 bg-surface-container-lowest p-4">
+                <div className="text-xs uppercase tracking-[0.12em] text-on-surface-variant">Name</div>
+                <div className="mt-1 font-semibold text-on-surface">{warehouseName}</div>
+                <div className="mt-2 text-xs text-on-surface-variant font-mono">{warehouseId || '—'}</div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-lg border border-outline-variant/60 p-3">
+                  <div className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">Code</div>
+                  <div className="mt-1 font-medium text-on-surface">{warehouseCode}</div>
+                </div>
+                <div className="rounded-lg border border-outline-variant/60 p-3">
+                  <div className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">Items</div>
+                  <div className="mt-1 font-medium text-on-surface">{stockLevels.length}</div>
+                </div>
+                <div className="rounded-lg border border-outline-variant/60 p-3">
+                  <div className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">Units</div>
+                  <div className="mt-1 font-medium text-on-surface">{formatNumber(totalUnits)}</div>
+                </div>
+                <div className="rounded-lg border border-outline-variant/60 p-3">
+                  <div className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">Reorder Gap</div>
+                  <div className="mt-1 font-medium text-on-surface">{formatNumber(totalReorderGap)}</div>
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="pending purchase orders" description="Purchase orders waiting on the warehouse.">
+            {pendingPurchaseOrders.length === 0 ? (
+              <EmptyState message="No pending purchase orders for this warehouse." />
+            ) : (
+              <div className="divide-y divide-outline-variant/40">
+                {pendingPurchaseOrders.map((po: PurchaseOrderSummary) => (
+                  <div key={po.id} className="p-4 hover:bg-surface-container/30 transition-colors">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium text-on-surface">{po.vendorName || shortId(po.vendorId)}</div>
+                        <div className="text-xs text-on-surface-variant font-mono mt-0.5">{shortId(po.id)}</div>
+                      </div>
+                      <StatusPill value={po.status.replace(/_/g, ' ')} tone="amber" />
+                    </div>
+                    <div className="mt-3 flex items-center justify-between text-xs text-on-surface-variant">
+                      <span>{po.lineItemCount || 0} line items</span>
+                      <span>{formatCurrency(po.totalAmount)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard title="pending approvals" description="Approvals waiting in the queue.">
+            {pendingApprovals.length === 0 ? (
+              <EmptyState message="No pending approvals right now." />
+            ) : (
+              <div className="divide-y divide-outline-variant/40">
+                {pendingApprovals.map((approval: ApprovalSummary) => (
+                  <div key={approval.id} className="p-4 hover:bg-surface-container/30 transition-colors">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium text-on-surface">{approval.agentType.replace(/_/g, ' ')}</div>
+                        <div className="text-xs text-on-surface-variant mt-0.5">
+                          Step {approval.stepNumber} · {shortId(approval.agentRunId)}
+                        </div>
+                      </div>
+                      <StatusPill value={approval.status} tone="amber" />
+                    </div>
+                    <div className="mt-3 text-xs text-on-surface-variant">
+                      {formatDate(approval.createdAt)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+
+          <Card className="border-outline-variant/60 shadow-sm bg-accent/5">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                  <Warehouse className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-on-surface">Scope driven by JWT</div>
+                  <div className="text-xs text-on-surface-variant">
+                    Warehouse ID is pulled from the decoded access token, matching your task spec.
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
