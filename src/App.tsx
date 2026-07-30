@@ -17,14 +17,6 @@ import PurchaseOrders from '@/pages/PurchaseOrders';
 import PurchaseOrderDetail from '@/pages/PurchaseOrderDetail';
 import Users from '@/pages/Users';
 
-function RootDashboard() {
-  const user = useAuthStore((s) => s.user);
-  if (user?.role === 'branch_manager' || user?.role === 'warehouse_manager') {
-    return <BranchDashboard />;
-  }
-  return <Dashboard />;
-}
-
 function AppLayout() {
   return (
     <div className="flex h-screen bg-background">
