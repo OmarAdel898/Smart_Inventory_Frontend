@@ -7,6 +7,7 @@ import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import BranchDashboard from '@/pages/BranchDashboard';
 import { useAuthStore } from '@/store/authStore';
+import { getAccessTokenFromCookie, getWarehouseIdFromToken } from '@/lib/auth';
 import Inventory from '@/pages/Inventory';
 import Warehouses from '@/pages/Warehouses';
 import Vendors from '@/pages/Vendors';
@@ -35,7 +36,9 @@ function AppLayout() {
 
 function RootDashboard() {
   const user = useAuthStore((s) => s.user);
-  if (user?.role === 'branch_manager' || user?.role === 'warehouse_manager') {
+  const isBranchRole = user?.role === 'branch_manager' || user?.role === 'warehouse_manager';
+  const hasWarehouseId = !!getWarehouseIdFromToken(getAccessTokenFromCookie());
+  if (isBranchRole && hasWarehouseId) {
     return <BranchDashboard />;
   }
   return <Dashboard />;
