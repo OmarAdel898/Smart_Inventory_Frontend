@@ -96,7 +96,7 @@ export async function fetchBranchDashboardSnapshot(warehouseId: string): Promise
     requestJson<unknown>(`/warehouses/${warehouseId}`),
     requestJson<unknown>(`/stock-levels/low-stock?warehouseId=${warehouseId}`),
     requestJson<unknown>(`/stock-levels?warehouseId=${warehouseId}`),
-    requestJson<unknown>(`/purchase-orders?warehouseId=${warehouseId}&status=pending`),
+    requestJson<unknown>(`/purchase-orders?warehouseId=${warehouseId}&status=pending_approval`),
     requestJson<unknown>(`/approvals?status=pending`),
   ]);
 

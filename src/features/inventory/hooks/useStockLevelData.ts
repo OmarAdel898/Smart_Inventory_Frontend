@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { stockLevelApi } from '@/api/stock-level.api';
-import { ApiError } from '@/api/client';
-import type { StockLevelResponse } from '@/types';
+import { stockLevelApi } from '../../../api/stock-level.api';
+import { ApiError } from '../../../api/client';
+import type { StockLevelResponse } from '../../../types/index';
 import { stockLevelThresholdSchema } from '../types';
 
 interface UseStockLevelDataOptions {

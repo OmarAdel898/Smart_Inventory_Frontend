@@ -1,17 +1,7 @@
 import { api } from './client';
+import type { WarehouseResponse } from '@/types';
 
-export interface Warehouse {
-  id: string;
-  name: string;
-  code?: string | null;
-  managerName?: string | null;
-  managerEmail?: string | null;
-  address?: string | null;
-  city?: string | null;
-  phone?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-}
+export type Warehouse = WarehouseResponse;
 
 export interface WarehouseStockSummary {
   warehouseId: string;
@@ -22,10 +12,10 @@ export interface WarehouseStockSummary {
 
 export const warehouseApi = {
   list: () => {
-    return api.get<Warehouse[]>('/warehouses');
+    return api.get<WarehouseResponse[]>('/warehouses');
   },
   getById: (id: string) => {
-    return api.get<Warehouse>(`/warehouses/${id}`);
+    return api.get<WarehouseResponse>(`/warehouses/${id}`);
   },
   stockSummary: (warehouseId: string) => {
     return api.get<WarehouseStockSummary>(`/warehouses/${warehouseId}/summary`);
