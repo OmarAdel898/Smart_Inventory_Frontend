@@ -39,6 +39,14 @@ function AppLayout() {
   );
 }
 
+function RootDashboard() {
+  const user = useAuthStore((s) => s.user);
+  if (user?.role === 'branch_manager' || user?.role === 'warehouse_manager') {
+    return <BranchDashboard />;
+  }
+  return <Dashboard />;
+}
+
 export default function App() {
   return (
     <Routes>
