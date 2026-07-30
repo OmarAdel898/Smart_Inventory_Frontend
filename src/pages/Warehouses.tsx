@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { warehouseApi, type Warehouse } from '@/api/warehouse.api';
+import { getAccessTokenFromCookie, getWarehouseIdFromToken } from '@/lib/auth';
 
 function formatDate(value?: string): string {
   if (!value) return '—';
@@ -39,8 +40,19 @@ export default function Warehouses() {
     setError(null);
 
     try {
-      const data = await warehouseApi.list();
-      setWarehouses(Array.isArray(data) ? data : []);
+      const token = getAccessTokenFromCookie();
+      const       warehouseId = getWarehouseIdFromToken(token);
+
+      if (warehouseId) {
+        const warehouse = await warehouseApi.getById(warehouseId);
+        if (warehouse && typeof warehouse === 'object' && 'id' in warehouse) {
+          setWarehouses([warehouse]);
+          setSelected(warehouse);
+        }
+      } else {
+        const data = await warehouseApi.list();
+        setWarehouses(Array.isArray(data) ? data : []);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load warehouses.');
     } finally {
@@ -58,13 +70,15 @@ export default function Warehouses() {
           <p className="text-sm font-medium text-accent">Infrastructure</p>
           <h1 className="text-3xl font-semibold tracking-tight text-on-surface">Warehouses</h1>
           <p className="mt-1 text-sm text-on-surface-variant">
-            Manage warehouse locations, details, and operational info.
+            {selected && warehouses.length === 1
+              ? `Your assigned warehouse — ${selected.name}`
+              : 'Manage warehouse locations, details, and operational info.'}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="inline-flex items-center gap-3 rounded-xl border border-outline-variant/70 bg-surface px-4 py-2.5 shadow-sm">
             <Building2 className="h-4 w-4 text-accent" />
-            <span className="text-sm font-semibold text-on-surface">{warehouses.length} locations</span>
+            <span className="text-sm font-semibold text-on-surface">{warehouses.length} location{(warehouses.length !== 1) ? 's' : ''}</span>
           </div>
           <Button variant="outline" onClick={() => load(true)} disabled={loading || refreshing} className="gap-2">
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
