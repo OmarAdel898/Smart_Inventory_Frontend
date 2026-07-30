@@ -15,6 +15,7 @@ import Negotiations from '@/pages/Negotiations';
 import Assistant from '@/pages/Assistant';
 import PurchaseOrders from '@/pages/PurchaseOrders';
 import PurchaseOrderDetail from '@/pages/PurchaseOrderDetail';
+import PurchaseOrderCreate from '@/pages/PurchaseOrderCreate';
 import Users from '@/pages/Users';
 
 function AppLayout() {
@@ -73,6 +74,7 @@ export default function App() {
           
           <Route element={<RequirePermission permission="sidebar.purchaseOrders" />}>
             <Route path="purchase-orders" element={<PurchaseOrders />} />
+            <Route path="purchase-orders/new" element={<PurchaseOrderCreate />} />
             <Route path="purchase-orders/:id" element={<PurchaseOrderDetail />} />
           </Route>
           

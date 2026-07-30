@@ -165,6 +165,10 @@ export default function PurchaseOrders() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Button onClick={() => navigate('/purchase-orders/new')} className="gap-2 bg-primary text-white hover:bg-primary/90">
+            <Plus className="h-4 w-4" />
+            Create Purchase Order
+          </Button>
           <Button
             variant="outline"
             onClick={() => loadOrders(undefined, true)}
