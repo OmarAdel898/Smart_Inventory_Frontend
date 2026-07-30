@@ -2,17 +2,11 @@ import { Routes, Route, Outlet } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
 import TopAppBar from '@/components/TopAppBar';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import RequirePermission from '@/components/RequirePermission';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
-import Inventory from '@/pages/Inventory';
-import Vendors from '@/pages/Vendors';
-import Approvals from '@/pages/Approvals';
-import Anomalies from '@/pages/Anomalies';
-import Negotiations from '@/pages/Negotiations';
-import Assistant from '@/pages/Assistant';
-import PurchaseOrders from '@/pages/PurchaseOrders';
-import PurchaseOrderDetail from '@/pages/PurchaseOrderDetail';
-import Users from '@/pages/Users';
+import BranchDashboard from '@/pages/BranchDashboard';
+import { useAuthStore } from '@/store/authStore';
 
 function AppLayout() {
   return (
@@ -28,6 +22,14 @@ function AppLayout() {
   );
 }
 
+function RootDashboard() {
+  const user = useAuthStore((s) => s.user);
+  if (user?.role === 'branch_manager' || user?.role === 'warehouse_manager') {
+    return <BranchDashboard />;
+  }
+  return <Dashboard />;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -35,15 +37,39 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<Dashboard />} />
-          <Route path="users" element={<Users />} />
-          <Route path="inventory" element={<Inventory />} />
-          <Route path="vendors" element={<Vendors />} />
-          <Route path="approvals" element={<Approvals />} />
-          <Route path="anomalies" element={<Anomalies />} />
-          <Route path="negotiations" element={<Negotiations />} />
-          <Route path="purchase-orders" element={<PurchaseOrders />} />
-          <Route path="purchase-orders/:id" element={<PurchaseOrderDetail />} />
-          <Route path="assistant" element={<Assistant />} />
+
+          <Route element={<RequirePermission permission="sidebar.users" />}>
+            <Route path="users" element={<Users />} />
+          </Route>
+
+          <Route element={<RequirePermission permission="sidebar.inventory" />}>
+            <Route path="inventory" element={<Inventory />} />
+          </Route>
+
+          <Route element={<RequirePermission permission="sidebar.vendors" />}>
+            <Route path="vendors" element={<Vendors />} />
+          </Route>
+
+          <Route element={<RequirePermission permission="sidebar.approvals" />}>
+            <Route path="approvals" element={<Approvals />} />
+          </Route>
+
+          <Route element={<RequirePermission permission="sidebar.anomalies" />}>
+            <Route path="anomalies" element={<Anomalies />} />
+          </Route>
+
+          <Route element={<RequirePermission permission="sidebar.negotiations" />}>
+            <Route path="negotiations" element={<Negotiations />} />
+          </Route>
+
+          <Route element={<RequirePermission permission="sidebar.purchaseOrders" />}>
+            <Route path="purchase-orders" element={<PurchaseOrders />} />
+            <Route path="purchase-orders/:id" element={<PurchaseOrderDetail />} />
+          </Route>
+
+          <Route element={<RequirePermission permission="sidebar.assistant" />}>
+            <Route path="assistant" element={<Assistant />} />
+          </Route>
         </Route>
       </Route>
     </Routes>

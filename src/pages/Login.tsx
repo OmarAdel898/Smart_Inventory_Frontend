@@ -70,8 +70,8 @@ export default function Login() {
       setErrors({});
       setLoading(true);
       try {
-        const data = await api.post<{ access_token: string }>('/auth/login', result.data);
-        setAuth(null, data.access_token);
+        const data = await api.post<{ access_token: string; user: User }>('/auth/login', result.data);
+        setAuth(data.user, data.access_token);
         navigate('/');
       } catch (err) {
         setApiError(err instanceof ApiError ? err.message : 'Connection failed');
