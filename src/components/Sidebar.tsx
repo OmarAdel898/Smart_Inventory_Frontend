@@ -1,5 +1,6 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/hooks/useCan';
+import { useAuthStore } from '@/store/authStore';
 
 const linkConfig = [
   { to: '/', label: 'Dashboard', icon: 'dashboard', perm: 'sidebar.dashboard' as const },
@@ -16,6 +17,13 @@ const linkConfig = [
 export default function Sidebar() {
   const { can } = usePermissions();
   const links = linkConfig.filter((l) => can(l.perm));
+  const logout = useAuthStore((s) => s.logout);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <aside className="w-64 shrink-0 h-screen border-r border-outline-variant bg-surface-container-low flex flex-col p-4 z-40">
@@ -44,6 +52,15 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
+      <div className="mt-auto pt-4 border-t border-outline-variant">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2 px-2 py-2 rounded-lg transition-all duration-200 ease-in-out text-error hover:bg-error/10"
+        >
+          <span className="material-symbols-outlined text-[20px]">logout</span>
+          Logout
+        </button>
+      </div>
     </aside>
   );
 }
