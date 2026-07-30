@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE || '';
+const BASE_URL = import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL || '';
 
 function getToken(): string | null {
   const match = document.cookie.match(/(?:^|;\s*)token=([^;]*)/);
@@ -26,9 +26,10 @@ export class ApiError extends Error {
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = {};
   const token = getToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (body) headers['Content-Type'] = 'application/json';
 
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
@@ -39,7 +40,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const json = await res.json().catch(() => null);
 
   if (!res.ok) {
-    const message = json?.meta?.message || json?.message || `Request failed (${res.status})`;
+    const rawMessage = json?.meta?.message || json?.message || json?.error || `Request failed (${res.status})`;
+    const message = Array.isArray(rawMessage) ? rawMessage.join(', ') : rawMessage;
     throw new ApiError(message, res.status, json?.meta || json);
   }
 

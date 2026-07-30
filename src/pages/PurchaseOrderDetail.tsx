@@ -123,7 +123,7 @@ export default function PurchaseOrderDetail() {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        throw new Error(payload?.message || `Failed to load purchase order (${response.status})`);
+        throw new Error(payload?.meta?.message || payload?.message || `Failed to fetch PO (${response.status})`);
       }
 
       const body = await response.json();
@@ -154,7 +154,7 @@ export default function PurchaseOrderDetail() {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        throw new Error(payload?.message || `Transition failed (${response.status})`);
+        throw new Error(payload?.meta?.message || payload?.message || `Transition failed (${response.status})`);
       }
 
       const body = await response.json();

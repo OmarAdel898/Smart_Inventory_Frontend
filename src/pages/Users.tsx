@@ -124,7 +124,7 @@ export default function Users() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        throw new Error(body?.message || `Failed to load users (${res.status})`);
+        throw new Error(body?.meta?.message || body?.message || `Failed to fetch users (${res.status})`);
       }
 
       const body = await res.json();
@@ -196,7 +196,7 @@ export default function Users() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        throw new Error(body?.message || `Failed to create user (${res.status})`);
+        throw new Error(body?.meta?.message || body?.message || `Failed to create user (${res.status})`);
       }
 
       setIsCreateOpen(false);
@@ -245,7 +245,7 @@ export default function Users() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        throw new Error(body?.message || `Failed to update user (${res.status})`);
+        throw new Error(body?.meta?.message || body?.message || `Failed to update user (${res.status})`);
       }
 
       setEditingUser(null);
@@ -272,7 +272,7 @@ export default function Users() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        throw new Error(body?.message || `Failed to delete user (${res.status})`);
+        throw new Error(body?.meta?.message || body?.message || `Failed to delete user (${res.status})`);
       }
 
       setDeletingUser(null);
