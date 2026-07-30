@@ -47,6 +47,7 @@ export default function Login() {
 
   const [mode, setMode] = useState<Mode>('login');
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -79,11 +80,12 @@ export default function Login() {
         setLoading(false);
       }
     } else {
-      const result = registerSchema.safeParse({ username: name, email, password });
+      const result = registerSchema.safeParse({ name, username, email, password });
       if (!result.success) {
         const flat = result.error.flatten().fieldErrors;
         setErrors({
-          ...(flat.username?.[0] && { name: flat.username[0] }),
+          ...(flat.name?.[0] && { name: flat.name[0] }),
+          ...(flat.username?.[0] && { username: flat.username[0] }),
           ...(flat.email?.[0] && { email: flat.email[0] }),
           ...(flat.password?.[0] && { password: flat.password[0] }),
         });
@@ -92,11 +94,11 @@ export default function Login() {
       setErrors({});
       setLoading(true);
       try {
-        const nameParts = name.trim().split(/\s+/);
         const data = await api.post<{ access_token: string; user: User }>('/auth/register', {
-          ...result.data,
-          firstName: nameParts[0] || '',
-          lastName: nameParts.slice(1).join(' ') || '',
+          name: result.data.name,
+          username: result.data.username,
+          email: result.data.email,
+          password: result.data.password,
         });
         setAuth(data.user, data.access_token);
         navigate('/');
@@ -157,7 +159,10 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {mode === 'register' && (
-              <FormField id="name" type="text" placeholder="John Doe" label="Full Name" value={name} onChange={setName} error={errors.name} required />
+              <>
+                <FormField id="name" type="text" placeholder="John Doe" label="Full Name" value={name} onChange={setName} error={errors.name} required />
+                <FormField id="username" type="text" placeholder="johndoe" label="Username" value={username} onChange={setUsername} error={errors.username} required />
+              </>
             )}
             <FormField
               id="email"
