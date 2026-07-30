@@ -111,10 +111,7 @@ export default function Vendors() {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        const message =
-          payload?.message ||
-          `Failed to load vendors (${response.status})`;
-        throw new Error(message);
+        throw new Error(payload?.meta?.message || payload?.message || `Failed to fetch vendors (${response.status})`);
       }
 
       const body = (await response.json()) as { success: boolean; data: Vendor[] };

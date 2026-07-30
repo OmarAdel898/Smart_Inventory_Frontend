@@ -108,7 +108,7 @@ export default function PurchaseOrders() {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        throw new Error(payload?.message || `Failed to load purchase orders (${response.status})`);
+        throw new Error(payload?.meta?.message || payload?.message || `Failed to fetch POs (${response.status})`);
       }
 
       const body = await response.json();

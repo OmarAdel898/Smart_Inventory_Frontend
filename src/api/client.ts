@@ -40,7 +40,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const json = await res.json().catch(() => null);
 
   if (!res.ok) {
-    const message = json?.meta?.message || json?.message || json?.error || `Request failed (${res.status})`;
+    const rawMessage = json?.meta?.message || json?.message || json?.error || `Request failed (${res.status})`;
+    const message = Array.isArray(rawMessage) ? rawMessage.join(', ') : rawMessage;
     throw new ApiError(message, res.status, json?.meta || json);
   }
 
