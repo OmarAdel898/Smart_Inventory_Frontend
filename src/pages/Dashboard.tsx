@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { usePermissions } from '@/hooks/useCan';
 
 type SKU = {
   id: string;
@@ -35,7 +36,10 @@ async function fetchListSafe<T>(url: string, signal?: AbortSignal): Promise<T[]>
   }
 }
 
+
+
 export default function Dashboard() {
+  const { can } = usePermissions();
   const [skus, setSkus] = useState<SKU[]>([]);
   const [lowStockSkus, setLowStockSkus] = useState<SKU[]>([]);
   const [approvalCount, setApprovalCount] = useState<number>(0);
@@ -179,9 +183,11 @@ export default function Dashboard() {
                       <td className="px-4 text-destructive font-semibold">{item.currentQuantity ?? 0}</td>
                       <td className="px-4 text-on-surface-variant">{item.reorderThreshold ?? 0}</td>
                       <td className="px-6 text-right">
-                        <button className="bg-surface-container-highest text-primary text-xs font-medium px-2.5 py-1 rounded border border-outline-variant hover:bg-outline-variant transition-colors">
-                          Draft PO
-                        </button>
+                        {can('purchaseOrders.manage') && (
+                          <button className="bg-surface-container-highest text-primary text-xs font-medium px-2.5 py-1 rounded border border-outline-variant hover:bg-outline-variant transition-colors">
+                            Draft PO
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))
