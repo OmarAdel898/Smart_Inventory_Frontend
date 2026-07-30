@@ -16,7 +16,7 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
-      '/inventory': {
+      '/inventory/stock-movements': {
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
