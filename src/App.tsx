@@ -9,6 +9,7 @@ import BranchDashboard from '@/pages/BranchDashboard';
 import { useAuthStore } from '@/store/authStore';
 import Inventory from '@/pages/Inventory';
 import Warehouses from '@/pages/Warehouses';
+import WarehouseCreate from '@/pages/WarehouseCreate';
 import Vendors from '@/pages/Vendors';
 import Approvals from '@/pages/Approvals';
 import Anomalies from '@/pages/Anomalies';
@@ -63,6 +64,8 @@ export default function App() {
           
           <Route element={<RequirePermission permission="sidebar.warehouses" />}>
             <Route path="warehouses" element={<Warehouses />} />
+            <Route path="warehouses/new" element={<WarehouseCreate />} />
+            <Route path="warehouses/:id/edit" element={<WarehouseCreate />} />
           </Route>
           
           <Route element={<RequirePermission permission="sidebar.approvals" />}>
