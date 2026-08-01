@@ -22,6 +22,8 @@ import PurchaseOrders from '@/pages/PurchaseOrders';
 import PurchaseOrderDetail from '@/pages/PurchaseOrderDetail';
 import PurchaseOrderCreate from '@/pages/PurchaseOrderCreate';
 import Users from '@/pages/Users';
+import Categories from '@/pages/Categories';
+import CategoryCreate from '@/pages/CategoryCreate';
 
 function AppLayout() {
   return (
@@ -63,6 +65,9 @@ export default function App() {
           
           <Route element={<RequirePermission permission="sidebar.inventory" />}>
             <Route path="inventory" element={<Inventory />} />
+            <Route path="categories" element={<Categories />} />
+            <Route path="categories/new" element={<CategoryCreate />} />
+            <Route path="categories/:id/edit" element={<CategoryCreate />} />
           </Route>
           
           <Route element={<RequirePermission permission="sidebar.vendors" />}>
