@@ -11,7 +11,7 @@ import {
   RefreshCw,
   Search,
   Shield,
-  Trash2,
+  Ban,
   UserCheck,
   UserX,
   Users as UsersIcon,
@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { getRoleFromToken } from '@/lib/auth';
+import { userCreateSchema, userEditSchema } from '@/features/users/validations';
 
 export type UserRole =
   | 'super_admin'
@@ -71,7 +73,10 @@ function getInitials(name: string | null, email: string): string {
 }
 
 export default function Users() {
+  const token = getToken();
+  const userRole = getRoleFromToken(token);
   const [users, setUsers] = useState<UserItem[]>([]);
+  const [warehouses, setWarehouses] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -89,6 +94,7 @@ export default function Users() {
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Create form inputs
   const [createForm, setCreateForm] = useState({
@@ -139,9 +145,24 @@ export default function Users() {
     }
   };
 
+  const loadWarehouses = async (signal?: AbortSignal) => {
+    try {
+      const token = getToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+      const res = await fetch(`${API_BASE}/warehouses`, { headers, signal });
+      if (res.ok) {
+        const body = await res.json();
+        setWarehouses(body?.data || (Array.isArray(body) ? body : []));
+      }
+    } catch (e) {
+      console.error('Failed to load warehouses', e);
+    }
+  };
+
   useEffect(() => {
     const controller = new AbortController();
     void loadUsers(controller.signal);
+    void loadWarehouses(controller.signal);
     return () => controller.abort();
   }, []);
 
@@ -173,10 +194,10 @@ export default function Users() {
     e.preventDefault();
     setIsSubmitting(true);
     setFormError(null);
+    setFieldErrors({});
 
     try {
-      const token = getToken();
-      const payload: Record<string, unknown> = {
+      const payload = {
         name: createForm.name || undefined,
         username: createForm.username,
         email: createForm.email,
@@ -185,13 +206,25 @@ export default function Users() {
         warehouseId: createForm.warehouseId || undefined,
       };
 
+      const parsed = userCreateSchema.safeParse(payload);
+      if (!parsed.success) {
+        const errors: Record<string, string> = {};
+        for (const issue of parsed.error.issues) {
+          const field = String(issue.path[0]);
+          if (!errors[field]) errors[field] = issue.message;
+        }
+        setFieldErrors(errors);
+        setIsSubmitting(false);
+        return;
+      }
+
       const res = await fetch(`${API_BASE}/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(parsed.data),
       });
 
       if (!res.ok) {
@@ -222,17 +255,29 @@ export default function Users() {
     if (!editingUser) return;
     setIsSubmitting(true);
     setFormError(null);
+    setFieldErrors({});
 
     try {
-      const token = getToken();
       const payload = {
         name: editForm.name || undefined,
         username: editForm.username,
         email: editForm.email,
         role: editForm.role,
-        warehouseId: editForm.warehouseId || null,
+        warehouseId: editForm.warehouseId || undefined,
         isActive: editForm.isActive,
       };
+
+      const parsed = userEditSchema.safeParse(payload);
+      if (!parsed.success) {
+        const errors: Record<string, string> = {};
+        for (const issue of parsed.error.issues) {
+          const field = String(issue.path[0]);
+          if (!errors[field]) errors[field] = issue.message;
+        }
+        setFieldErrors(errors);
+        setIsSubmitting(false);
+        return;
+      }
 
       const res = await fetch(`${API_BASE}/users/${editingUser.id}`, {
         method: 'PATCH',
@@ -240,7 +285,7 @@ export default function Users() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(parsed.data),
       });
 
       if (!res.ok) {
@@ -254,6 +299,26 @@ export default function Users() {
       setFormError(err instanceof Error ? err.message : 'Error updating user');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Reactivate User
+  const handleReactivate = async (u: UserItem) => {
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/users/${u.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ isActive: true }),
+      });
+      if (res.ok) {
+        await loadUsers(undefined, true);
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -295,6 +360,7 @@ export default function Users() {
       isActive: user.isActive,
     });
     setFormError(null);
+    setFieldErrors({});
   };
 
   return (
@@ -323,7 +389,11 @@ export default function Users() {
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button onClick={() => setIsCreateOpen(true)} className="gap-2 bg-primary text-white hover:bg-primary/90">
+          <Button onClick={() => {
+            setIsCreateOpen(true);
+            setFieldErrors({});
+            setFormError(null);
+          }} className="gap-2 bg-primary text-white hover:bg-primary/90">
             <Plus className="h-4 w-4" />
             Create User
           </Button>
@@ -540,16 +610,28 @@ export default function Users() {
                             >
                               <Edit2 className="h-4 w-4" />
                             </button>
-                            <button
-                              onClick={() => {
-                                setDeletingUser(u);
-                                setFormError(null);
-                              }}
-                              className="p-1.5 rounded-lg text-on-surface-variant hover:bg-red-50 hover:text-red-600 transition-colors"
-                              title="Delete User"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            {['tenant_owner', 'super_admin'].includes(userRole || '') && (
+                              u.isActive ? (
+                                <button
+                                  onClick={() => {
+                                    setDeletingUser(u);
+                                    setFormError(null);
+                                  }}
+                                  className="p-1.5 rounded-lg text-on-surface-variant hover:bg-red-50 hover:text-red-600 transition-colors"
+                                  title="Deactivate User"
+                                >
+                                  <Ban className="h-4 w-4" />
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleReactivate(u)}
+                                  className="p-1.5 rounded-lg text-on-surface-variant hover:bg-green-50 hover:text-green-600 transition-colors"
+                                  title="Reactivate User"
+                                >
+                                  <UserCheck className="h-4 w-4" />
+                                </button>
+                              )
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -572,7 +654,10 @@ export default function Users() {
                 Create New User
               </h2>
               <button
-                onClick={() => setIsCreateOpen(false)}
+                onClick={() => {
+                  setIsCreateOpen(false);
+                  setFieldErrors({});
+                }}
                 className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg"
               >
                 <X className="h-5 w-5" />
@@ -596,8 +681,9 @@ export default function Users() {
                   placeholder="John Doe"
                   value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                  className="w-full px-3 py-2 text-sm bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                  className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.name ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
                 />
+                {fieldErrors.name && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.name}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -611,8 +697,9 @@ export default function Users() {
                     placeholder="jdoe"
                     value={createForm.username}
                     onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.username ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
                   />
+                  {fieldErrors.username && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.username}</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
@@ -624,8 +711,9 @@ export default function Users() {
                     placeholder="jdoe@example.com"
                     value={createForm.email}
                     onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.email ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
                   />
+                  {fieldErrors.email && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.email}</p>}
                 </div>
               </div>
 
@@ -639,8 +727,9 @@ export default function Users() {
                   placeholder="Min 8 chars, 1 uppercase, 1 symbol"
                   value={createForm.password}
                   onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                  className="w-full px-3 py-2 text-sm font-mono bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                  className={`w-full px-3 py-2 text-sm font-mono bg-surface border rounded-lg focus:ring-2 ${fieldErrors.password ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
                 />
+                {fieldErrors.password && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.password}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -653,7 +742,7 @@ export default function Users() {
                     onChange={(e) =>
                       setCreateForm({ ...createForm, role: e.target.value as UserRole })
                     }
-                    className="w-full px-3 py-2 text-sm bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.role ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
                   >
                     <option value="tenant_owner">Tenant Owner</option>
                     <option value="warehouse_manager">Warehouse Manager</option>
@@ -661,24 +750,34 @@ export default function Users() {
                     <option value="inventory_clerk">Inventory Clerk</option>
                     <option value="super_admin">Super Admin</option>
                   </select>
+                  {fieldErrors.role && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.role}</p>}
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
-                    Warehouse ID (UUID)
+                    Warehouse
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Optional warehouse UUID"
+                  <select
                     value={createForm.warehouseId}
                     onChange={(e) => setCreateForm({ ...createForm, warehouseId: e.target.value })}
-                    className="w-full px-3 py-2 text-sm font-mono bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
-                  />
+                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.warehouseId ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                  >
+                    <option value="">Global / None</option>
+                    {warehouses.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.warehouseId && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.warehouseId}</p>}
                 </div>
               </div>
 
               <div className="pt-4 border-t border-outline-variant flex justify-end gap-3">
-                <Button variant="outline" type="button" onClick={() => setIsCreateOpen(false)}>
+                <Button variant="outline" type="button" onClick={() => {
+                  setIsCreateOpen(false);
+                  setFieldErrors({});
+                }}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isSubmitting} className="gap-2 bg-primary text-white">
@@ -701,7 +800,10 @@ export default function Users() {
                 Edit User: {editingUser.username}
               </h2>
               <button
-                onClick={() => setEditingUser(null)}
+                onClick={() => {
+                  setEditingUser(null);
+                  setFieldErrors({});
+                }}
                 className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg"
               >
                 <X className="h-5 w-5" />
@@ -724,8 +826,9 @@ export default function Users() {
                   type="text"
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="w-full px-3 py-2 text-sm bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                  className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.name ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
                 />
+                {fieldErrors.name && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.name}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -737,8 +840,9 @@ export default function Users() {
                     type="text"
                     value={editForm.username}
                     onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.username ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
                   />
+                  {fieldErrors.username && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.username}</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
@@ -748,22 +852,21 @@ export default function Users() {
                     type="email"
                     value={editForm.email}
                     onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.email ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
                   />
+                  {fieldErrors.email && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.email}</p>}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
-                    Role
+                    Assigned Role
                   </label>
                   <select
                     value={editForm.role}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, role: e.target.value as UserRole })
-                    }
-                    className="w-full px-3 py-2 text-sm bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                    onChange={(e) => setEditForm({ ...editForm, role: e.target.value as UserRole })}
+                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.role ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
                   >
                     <option value="tenant_owner">Tenant Owner</option>
                     <option value="warehouse_manager">Warehouse Manager</option>
@@ -771,19 +874,26 @@ export default function Users() {
                     <option value="inventory_clerk">Inventory Clerk</option>
                     <option value="super_admin">Super Admin</option>
                   </select>
+                  {fieldErrors.role && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.role}</p>}
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
-                    Warehouse ID
+                    Warehouse
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Warehouse UUID"
+                  <select
                     value={editForm.warehouseId}
                     onChange={(e) => setEditForm({ ...editForm, warehouseId: e.target.value })}
-                    className="w-full px-3 py-2 text-sm font-mono bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
-                  />
+                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.warehouseId ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                  >
+                    <option value="">Global / None</option>
+                    {warehouses.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.warehouseId && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.warehouseId}</p>}
                 </div>
               </div>
 
@@ -801,7 +911,10 @@ export default function Users() {
               </div>
 
               <div className="pt-4 border-t border-outline-variant flex justify-end gap-3">
-                <Button variant="outline" type="button" onClick={() => setEditingUser(null)}>
+                <Button variant="outline" type="button" onClick={() => {
+                  setEditingUser(null);
+                  setFieldErrors({});
+                }}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isSubmitting} className="gap-2 bg-primary text-white">
@@ -820,16 +933,16 @@ export default function Users() {
           <div className="w-full max-w-md bg-surface border border-outline-variant rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150 p-6 space-y-4">
             <div className="flex items-center gap-3 text-red-600">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                <Trash2 className="h-5 w-5" />
+                <Ban className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-on-surface">Delete User Confirmation</h3>
-                <p className="text-xs text-on-surface-variant">This action soft-deletes the user account.</p>
+                <h3 className="text-lg font-semibold text-on-surface">Deactivate User Confirmation</h3>
+                <p className="text-xs text-on-surface-variant">This action deactivates the user account.</p>
               </div>
             </div>
 
             <p className="text-sm text-on-surface-variant">
-              Are you sure you want to delete user{' '}
+              Are you sure you want to deactivate user{' '}
               <strong className="text-on-surface">{deletingUser.name || deletingUser.username}</strong> (
               {deletingUser.email})?
             </p>
@@ -856,7 +969,7 @@ export default function Users() {
                 className="gap-2 bg-red-600 text-white hover:bg-red-700"
               >
                 {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                Confirm Delete
+                Confirm Deactivate
               </Button>
             </div>
           </div>

@@ -22,6 +22,7 @@ import PurchaseOrders from '@/pages/PurchaseOrders';
 import PurchaseOrderDetail from '@/pages/PurchaseOrderDetail';
 import PurchaseOrderCreate from '@/pages/PurchaseOrderCreate';
 import Users from '@/pages/Users';
+import StockMovements from '@/pages/StockMovements';
 import Categories from '@/pages/Categories';
 import CategoryCreate from '@/pages/CategoryCreate';
 
@@ -72,6 +73,10 @@ export default function App() {
           
           <Route element={<RequirePermission permission="sidebar.vendors" />}>
             <Route path="vendors" element={<Vendors />} />
+          </Route>
+          
+          <Route element={<RequirePermission permission="sidebar.movements" />}>
+            <Route path="stock-movements" element={<StockMovements />} />
           </Route>
           
           <Route element={<RequirePermission permission="sidebar.warehouses" />}>

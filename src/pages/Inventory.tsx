@@ -15,6 +15,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks/useCan';
+import { skuSchema } from '@/features/inventory/validations';
 
 export type SkuItem = {
   id: string;
@@ -42,6 +43,8 @@ function formatCurrency(value: number): string {
 export default function Inventory() {
   const { can } = usePermissions();
   const [skus, setSkus] = useState<SkuItem[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -57,6 +60,7 @@ export default function Inventory() {
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Forms
   const [skuForm, setSkuForm] = useState({
@@ -97,9 +101,31 @@ export default function Inventory() {
     }
   };
 
+  const loadRelations = async (signal?: AbortSignal) => {
+    try {
+      const token = getToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+      const [catRes, venRes] = await Promise.all([
+        fetch(`${API_BASE}/categories`, { headers, signal }),
+        fetch(`${API_BASE}/vendors`, { headers, signal })
+      ]);
+      if (catRes.ok) {
+        const catBody = await catRes.json();
+        setCategories(catBody?.data || (Array.isArray(catBody) ? catBody : []));
+      }
+      if (venRes.ok) {
+        const venBody = await venRes.json();
+        setVendors(venBody?.data || (Array.isArray(venBody) ? venBody : []));
+      }
+    } catch (e) {
+      console.error('Failed to load relations', e);
+    }
+  };
+
   useEffect(() => {
     const controller = new AbortController();
     void loadSkus(controller.signal);
+    void loadRelations(controller.signal);
     return () => controller.abort();
   }, []);
 
@@ -115,10 +141,11 @@ export default function Inventory() {
     e.preventDefault();
     setIsSubmitting(true);
     setFormError(null);
+    setFieldErrors({});
 
     try {
       const token = getToken();
-      const payload: Record<string, unknown> = {
+      const payload = {
         sku: skuForm.sku,
         name: skuForm.name,
         categoryId: skuForm.categoryId || undefined,
@@ -127,13 +154,25 @@ export default function Inventory() {
         preferredVendorId: skuForm.preferredVendorId || undefined,
       };
 
+      const parsed = skuSchema.safeParse(payload);
+      if (!parsed.success) {
+        const errors: Record<string, string> = {};
+        for (const issue of parsed.error.issues) {
+          const field = String(issue.path[0]);
+          if (!errors[field]) errors[field] = issue.message;
+        }
+        setFieldErrors(errors);
+        setIsSubmitting(false);
+        return;
+      }
+
       const res = await fetch(`${API_BASE}/sku`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(parsed.data),
       });
 
       if (!res.ok) {
@@ -156,6 +195,7 @@ export default function Inventory() {
     if (!editingSku) return;
     setIsSubmitting(true);
     setFormError(null);
+    setFieldErrors({});
 
     try {
       const token = getToken();
@@ -168,13 +208,25 @@ export default function Inventory() {
         preferredVendorId: skuForm.preferredVendorId || undefined,
       };
 
+      const parsed = skuSchema.safeParse(payload);
+      if (!parsed.success) {
+        const errors: Record<string, string> = {};
+        for (const issue of parsed.error.issues) {
+          const field = String(issue.path[0]);
+          if (!errors[field]) errors[field] = issue.message;
+        }
+        setFieldErrors(errors);
+        setIsSubmitting(false);
+        return;
+      }
+
       const res = await fetch(`${API_BASE}/sku/${editingSku.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(parsed.data),
       });
 
       if (!res.ok) {
@@ -228,6 +280,7 @@ export default function Inventory() {
       preferredVendorId: sku.preferredVendorId || '',
     });
     setFormError(null);
+    setFieldErrors({});
   };
 
   return (
@@ -260,6 +313,7 @@ export default function Inventory() {
               setIsCreateOpen(true);
               setSkuForm({ sku: '', name: '', categoryId: '', cost: 0, price: 0, preferredVendorId: '' });
               setFormError(null);
+              setFieldErrors({});
             }} className="gap-2 bg-primary text-white hover:bg-primary/90">
               <Plus className="h-4 w-4" />
               Add SKU
@@ -419,6 +473,7 @@ export default function Inventory() {
                 onClick={() => {
                   setIsCreateOpen(false);
                   setEditingSku(null);
+                  setFieldErrors({});
                 }}
                 className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg"
               >
@@ -445,8 +500,9 @@ export default function Inventory() {
                     placeholder="SKU-12345"
                     value={skuForm.sku}
                     onChange={(e) => setSkuForm({ ...skuForm, sku: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.sku ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
                   />
+                  {fieldErrors.sku && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.sku}</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
@@ -458,8 +514,9 @@ export default function Inventory() {
                     placeholder="Product Name"
                     value={skuForm.name}
                     onChange={(e) => setSkuForm({ ...skuForm, name: e.target.value })}
-                    className="w-full px-3 py-2 text-sm bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.name ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
                   />
+                  {fieldErrors.name && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.name}</p>}
                 </div>
               </div>
 
@@ -475,8 +532,9 @@ export default function Inventory() {
                     step="0.01"
                     value={skuForm.cost}
                     onChange={(e) => setSkuForm({ ...skuForm, cost: parseFloat(e.target.value) })}
-                    className="w-full px-3 py-2 text-sm bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.cost ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
                   />
+                  {fieldErrors.cost && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.cost}</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
@@ -489,35 +547,48 @@ export default function Inventory() {
                     step="0.01"
                     value={skuForm.price}
                     onChange={(e) => setSkuForm({ ...skuForm, price: parseFloat(e.target.value) })}
-                    className="w-full px-3 py-2 text-sm bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.price ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
                   />
+                  {fieldErrors.price && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.price}</p>}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
-                    Category ID (UUID)
+                    Category
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Optional category ID"
+                  <select
                     value={skuForm.categoryId}
                     onChange={(e) => setSkuForm({ ...skuForm, categoryId: e.target.value })}
-                    className="w-full px-3 py-2 text-sm font-mono bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
-                  />
+                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.categoryId ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                  >
+                    <option value="">Select Category...</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.categoryId && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.categoryId}</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
-                    Vendor ID (UUID)
+                    Preferred Vendor
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Optional vendor ID"
+                  <select
                     value={skuForm.preferredVendorId}
                     onChange={(e) => setSkuForm({ ...skuForm, preferredVendorId: e.target.value })}
-                    className="w-full px-3 py-2 text-sm font-mono bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
-                  />
+                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.preferredVendorId ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                  >
+                    <option value="">Select Vendor...</option>
+                    {vendors.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.preferredVendorId && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.preferredVendorId}</p>}
                 </div>
               </div>
 
@@ -525,6 +596,7 @@ export default function Inventory() {
                 <Button variant="outline" type="button" onClick={() => {
                   setIsCreateOpen(false);
                   setEditingSku(null);
+                  setFieldErrors({});
                 }}>
                   Cancel
                 </Button>

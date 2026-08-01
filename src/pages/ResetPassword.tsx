@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { api, ApiError } from '@/api/client';
+import { resetPasswordSchema } from '@/features/auth/validations';
 
 function FormField({ id, type, placeholder, label, value, onChange, error, required }: {
   id: string; type: string; placeholder: string; label: string;
@@ -36,6 +37,7 @@ export default function ResetPassword() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -55,13 +57,13 @@ export default function ResetPassword() {
       return;
     }
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    const parsed = resetPasswordSchema.safeParse({ password, confirmPassword });
+    if (!parsed.success) {
+      const flat = parsed.error.flatten().fieldErrors;
+      setFieldErrors({
+        ...(flat.password?.[0] && { password: flat.password[0] }),
+        ...(flat.confirmPassword?.[0] && { confirmPassword: flat.confirmPassword[0] }),
+      });
       return;
     }
 
@@ -130,6 +132,7 @@ export default function ResetPassword() {
                 label="New Password"
                 value={password}
                 onChange={setPassword}
+                error={fieldErrors.password}
                 required
               />
 
@@ -140,6 +143,7 @@ export default function ResetPassword() {
                 label="Confirm New Password"
                 value={confirmPassword}
                 onChange={setConfirmPassword}
+                error={fieldErrors.confirmPassword}
                 required
               />
 

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuthStore, type User } from '@/store/authStore';
 import { api, ApiError } from '@/api/client';
-import { loginSchema, registerSchema } from '@/lib/validations';
+import { loginSchema, registerSchema } from '@/features/auth/validations';
 
 type Mode = 'login' | 'register';
 

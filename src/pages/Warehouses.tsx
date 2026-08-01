@@ -8,6 +8,8 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Ban,
+  UserCheck,
   Trash2,
   Warehouse as WarehouseIcon,
   BarChart3,
@@ -17,7 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { warehouseApi, type Warehouse } from '@/api/warehouse.api';
-import { getAccessTokenFromCookie, getWarehouseIdFromToken } from '@/lib/auth';
+import { getAccessTokenFromCookie, getWarehouseIdFromToken, getRoleFromToken } from '@/lib/auth';
 
 function formatDate(value?: string): string {
   if (!value) return '—';
@@ -27,6 +29,8 @@ function formatDate(value?: string): string {
 
 export default function Warehouses() {
   const navigate = useNavigate();
+  const token = getAccessTokenFromCookie();
+  const userRole = getRoleFromToken(token);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -72,13 +76,23 @@ export default function Warehouses() {
     setDeleteError(null);
     try {
       await warehouseApi.remove(deleteTarget.id);
-      setWarehouses((prev) => prev.filter((w) => w.id !== deleteTarget.id));
+      await load(true);
       if (selected?.id === deleteTarget.id) setSelected(null);
       setDeleteTarget(null);
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'Failed to delete warehouse.');
+      setDeleteError(err instanceof Error ? err.message : 'Failed to deactivate warehouse.');
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const handleReactivate = async (w: Warehouse) => {
+    try {
+      await warehouseApi.update(w.id, { status: 'active' });
+      await load(true);
+      if (selected?.id === w.id) setSelected(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reactivate warehouse.');
     }
   };
 
@@ -202,14 +216,27 @@ export default function Warehouses() {
                           <Pencil className="h-3.5 w-3.5" />
                           Edit
                         </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => setDeleteTarget(selected)}
-                          className="gap-2 shrink-0"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        {['tenant_owner', 'super_admin'].includes(userRole || '') && (
+                          selected.status?.toUpperCase() !== 'INACTIVE' ? (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => setDeleteTarget(selected)}
+                              className="gap-2 shrink-0"
+                            >
+                              <Ban className="h-3.5 w-3.5" />
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleReactivate(selected)}
+                              className="gap-2 shrink-0 text-green-600 border-green-200 bg-green-50 hover:bg-green-100 hover:text-green-700"
+                            >
+                              <UserCheck className="h-3.5 w-3.5" />
+                            </Button>
+                          )
+                        )}
                       </div>
                     </div>
                   </CardHeader>
@@ -306,12 +333,12 @@ export default function Warehouses() {
                   <AlertCircle className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-on-surface">Confirm Deletion</h3>
+                  <h3 className="text-lg font-semibold text-on-surface">Confirm Deactivation</h3>
                   <p className="text-sm text-on-surface-variant">Irreversible action</p>
                 </div>
               </div>
               <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
-                Are you sure you want to delete <strong className="text-on-surface">{deleteTarget.name}</strong>? This action cannot be undone and may affect pending shipments associated with this warehouse.
+                Are you sure you want to deactivate <strong className="text-on-surface">{deleteTarget.name}</strong>? This action cannot be undone and will deactivate all users assigned to this warehouse.
               </p>
               {deleteError && (
                 <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 mb-4">
@@ -337,9 +364,9 @@ export default function Warehouses() {
                   {deleteLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Trash2 className="h-4 w-4" />
+                    <Ban className="h-4 w-4" />
                   )}
-                  Delete Warehouse
+                  Deactivate Warehouse
                 </Button>
               </div>
             </div>

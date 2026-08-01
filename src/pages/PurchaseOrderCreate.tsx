@@ -11,14 +11,13 @@ import {
   ShieldCheck,
   Trash2,
 } from 'lucide-react';
-import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { requestJson } from '@/api/_shared';
-import { getAccessTokenFromCookie, getRoleFromToken, getWarehouseIdFromToken } from '@/lib/auth';
 import type { SkuResponse, VendorResponse } from '@/types';
 import type { WarehouseResponse } from '@/api/inventory-types';
+import { purchaseOrderSchema } from '@/features/purchasing/validations';
 
 type LineItemRow = {
   id: string;
@@ -32,20 +31,6 @@ type PurchaseOrderPayload = {
   warehouseId: string;
   lineItems: Array<{ skuId: string; quantity: number; unitPrice: number }>;
 };
-
-const purchaseOrderSchema = z.object({
-  vendorId: z.string().min(1, 'Please select a vendor'),
-  warehouseId: z.string().min(1, 'Please select a warehouse'),
-  lineItems: z
-    .array(
-      z.object({
-        skuId: z.string().min(1, 'Please select a SKU'),
-        quantity: z.coerce.number().int('Quantity must be a whole number').positive('Quantity must be greater than 0'),
-        unitPrice: z.coerce.number().positive('Unit price must be greater than 0'),
-      }),
-    )
-    .min(1, 'Add at least one line item'),
-});
 
 function newLineItem(): LineItemRow {
   return {
@@ -78,6 +63,7 @@ export default function PurchaseOrderCreate() {
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [selectedVendorId, setSelectedVendorId] = useState('');
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
   const [lineItems, setLineItems] = useState<LineItemRow[]>([newLineItem()]);
@@ -166,6 +152,7 @@ export default function PurchaseOrderCreate() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitError(null);
+    setFieldErrors({});
 
     const payload: PurchaseOrderPayload = {
       vendorId: selectedVendorId,
@@ -179,7 +166,22 @@ export default function PurchaseOrderCreate() {
 
     const parsed = purchaseOrderSchema.safeParse(payload);
     if (!parsed.success) {
-      setSubmitError(parsed.error.issues[0]?.message || 'Please complete all required fields.');
+      const errors: Record<string, string> = {};
+      let hasLineItemError = false;
+      for (const issue of parsed.error.issues) {
+        const field = String(issue.path[0]);
+        if (field === 'lineItems') {
+          hasLineItemError = true;
+        } else if (!errors[field]) {
+          errors[field] = issue.message;
+        }
+      }
+      setFieldErrors(errors);
+      if (hasLineItemError) {
+        setSubmitError(parsed.error.issues[0]?.message || 'Please fix line item errors.');
+      } else if (Object.keys(errors).length === 0) {
+        setSubmitError(parsed.error.issues[0]?.message || 'Please complete all required fields.');
+      }
       return;
     }
 
@@ -270,7 +272,7 @@ export default function PurchaseOrderCreate() {
                 <select
                   value={selectedVendorId}
                   onChange={(e) => setSelectedVendorId(e.target.value)}
-                  className="w-full h-10 rounded-md border border-outline-variant bg-surface px-3 text-sm shadow-sm outline-none focus:ring-1 focus:ring-ring"
+                  className={`w-full h-10 rounded-md border bg-surface px-3 text-sm shadow-sm outline-none focus:ring-1 focus:ring-ring ${fieldErrors.vendorId ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant'}`}
                   required
                 >
                   <option value="">Select a vendor</option>
@@ -280,6 +282,7 @@ export default function PurchaseOrderCreate() {
                     </option>
                   ))}
                 </select>
+                {fieldErrors.vendorId && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.vendorId}</p>}
                 <p className="text-xs text-on-surface-variant">
                   {selectedVendor?.contactEmail || selectedVendor?.contactPhone || 'Choose the supplier for this order.'}
                 </p>
@@ -298,7 +301,7 @@ export default function PurchaseOrderCreate() {
                 <select
                   value={selectedWarehouseId}
                   onChange={(e) => setSelectedWarehouseId(e.target.value)}
-                  className="w-full h-10 rounded-md border border-outline-variant bg-surface px-3 text-sm shadow-sm outline-none focus:ring-1 focus:ring-ring disabled:bg-surface-container disabled:text-on-surface-variant"
+                  className={`w-full h-10 rounded-md border bg-surface px-3 text-sm shadow-sm outline-none focus:ring-1 focus:ring-ring disabled:bg-surface-container disabled:text-on-surface-variant ${fieldErrors.warehouseId ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant'}`}
                   required
                   disabled={warehouseLocked}
                 >
@@ -310,6 +313,7 @@ export default function PurchaseOrderCreate() {
                     </option>
                   ))}
                 </select>
+                {fieldErrors.warehouseId && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.warehouseId}</p>}
                 <p className="text-xs text-on-surface-variant">
                   {warehouseLocked && selectedWarehouse
                     ? `Auto-selected from your JWT: ${selectedWarehouse.name}`
