@@ -79,12 +79,10 @@ export interface VendorResponse {
 export interface WarehouseResponse {
   id: string;
   name: string;
-  code?: string | null;
-  managerName?: string | null;
-  managerEmail?: string | null;
-  address?: string | null;
-  city?: string | null;
-  phone?: string | null;
+  location?: string | null;
+  status: string;
+  tenantId?: string | null;
+  isMain: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
