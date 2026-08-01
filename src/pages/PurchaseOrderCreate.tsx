@@ -306,7 +306,7 @@ export default function PurchaseOrderCreate() {
                   {warehouses.map((warehouse) => (
                     <option key={warehouse.id} value={warehouse.id}>
                       {warehouse.name}
-                      {warehouse.code ? ` (${warehouse.code})` : ''}
+                      {warehouse.location ? ` (${warehouse.location})` : ''}
                     </option>
                   ))}
                 </select>

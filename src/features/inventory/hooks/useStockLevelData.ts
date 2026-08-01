@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { stockLevelApi } from '@/api/stock-level.api';
-import { ApiError } from '@/api/client';
-import type { StockLevelResponse } from '@/types';
+import { stockLevelApi } from '../../../api/stock-level.api';
+import { ApiError } from '../../../api/client';
+import type { StockLevelResponse } from '../../../types/index';
 import { stockLevelThresholdSchema } from '../types';
 
 interface UseStockLevelDataOptions {
@@ -85,7 +85,7 @@ export function useStockLevelData({ showToast }: UseStockLevelDataOptions) {
 
     setDrawerLoading(true);
     try {
-      await stockLevelApi.update(selectedStockLevel.id, validationResult.data);
+      await stockLevelApi.update(selectedStockLevel.warehouseId, selectedStockLevel.id, validationResult.data);
       showToast('Stock level thresholds updated successfully!', 'success');
       setDrawerOpen(false);
       void loadStockLevels();

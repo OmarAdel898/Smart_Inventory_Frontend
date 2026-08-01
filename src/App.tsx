@@ -4,12 +4,15 @@ import TopAppBar from '@/components/TopAppBar';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import RequirePermission from '@/components/RequirePermission';
 import Login from '@/pages/Login';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
 import Dashboard from '@/pages/Dashboard';
 import BranchDashboard from '@/pages/BranchDashboard';
 import { useAuthStore } from '@/store/authStore';
 import { getAccessTokenFromCookie, getWarehouseIdFromToken } from '@/lib/auth';
 import Inventory from '@/pages/Inventory';
 import Warehouses from '@/pages/Warehouses';
+import WarehouseCreate from '@/pages/WarehouseCreate';
 import Vendors from '@/pages/Vendors';
 import Approvals from '@/pages/Approvals';
 import Anomalies from '@/pages/Anomalies';
@@ -48,6 +51,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<RootDashboard />} />
@@ -66,6 +71,8 @@ export default function App() {
           
           <Route element={<RequirePermission permission="sidebar.warehouses" />}>
             <Route path="warehouses" element={<Warehouses />} />
+            <Route path="warehouses/new" element={<WarehouseCreate />} />
+            <Route path="warehouses/:id/edit" element={<WarehouseCreate />} />
           </Route>
           
           <Route element={<RequirePermission permission="sidebar.approvals" />}>

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { categoryApi } from '@/api/category.api';
-import { vendorApi } from '@/api/vendor.api';
-import { warehouseApi } from '@/api/warehouse.api';
-import { skuApi } from '@/api/sku.api';
-import type { CategoryResponse, VendorResponse, WarehouseResponse, SkuResponse } from '@/types';
+import { categoryApi } from '../../../api/category.api';
+import { vendorApi } from '../../../api/vendor.api';
+import { warehouseApi } from '../../../api/warehouse.api';
+import { skuApi } from '../../../api/sku.api';
+import type { CategoryResponse, VendorResponse, WarehouseResponse, SkuResponse } from '../../../types/index';
 
 export function useDropdownData() {
   const [categories, setCategories] = useState<CategoryResponse[]>([]);

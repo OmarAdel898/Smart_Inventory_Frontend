@@ -3,12 +3,10 @@ import { requestJson } from './_shared';
 export interface WarehouseDetails {
   id: string;
   name: string;
-  code?: string | null;
-  managerName?: string | null;
-  managerEmail?: string | null;
-  address?: string | null;
-  city?: string | null;
-  phone?: string | null;
+  location?: string | null;
+  status: string;
+  tenantId?: string | null;
+  isMain: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -96,7 +94,7 @@ export async function fetchBranchDashboardSnapshot(warehouseId: string): Promise
     requestJson<unknown>(`/warehouses/${warehouseId}`),
     requestJson<unknown>(`/stock-levels/low-stock?warehouseId=${warehouseId}`),
     requestJson<unknown>(`/stock-levels?warehouseId=${warehouseId}`),
-    requestJson<unknown>(`/purchase-orders?warehouseId=${warehouseId}&status=pending`),
+    requestJson<unknown>(`/purchase-orders?warehouseId=${warehouseId}&status=pending_approval`),
     requestJson<unknown>(`/approvals?status=pending`),
   ]);
 

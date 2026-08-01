@@ -1,3 +1,10 @@
+// All types are now in the canonical @/types location.
+// This file is kept for backward-compat imports from '@/api/inventory-types'.
+export type {
+  StockLevelResponse,
+  WarehouseResponse,
+} from '@/types';
+
 export interface StockLevelQueryParams {
   page?: number;
   limit?: number;
@@ -8,21 +15,4 @@ export interface StockLevelQueryParams {
 export interface UpdateStockLevelRequest {
   reorderThreshold: number;
   safetyStock: number;
-}
-
-export interface StockLevelResponse {
-  id: string;
-  skuId: string;
-  skuName: string;
-  warehouseId: string;
-  warehouseName: string;
-  quantity: number;
-  safetyStock: number;
-  reorderThreshold: number;
-}
-
-export interface WarehouseResponse {
-  id: string;
-  name: string;
-  code?: string;
 }

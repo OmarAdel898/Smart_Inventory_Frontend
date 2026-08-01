@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { skuApi } from '@/api/sku.api';
-import { ApiError } from '@/api/client';
-import type { SkuResponse } from '@/types';
+import { skuApi } from '../../../api/sku.api';
+import { ApiError } from '../../../api/client';
+import type { SkuResponse } from '../../../types/index';
 import { skuSchema } from '../types';
 
 interface UseSkuDataOptions {
@@ -59,11 +59,11 @@ export function useSkuData({ showToast }: UseSkuDataOptions) {
         categoryId: skuCategoryFilter || undefined,
       });
 
-      if (res && res.success) {
+      if (res && 'success' in res && res.success) {
         setSkus(res.data || []);
         setSkuMeta(res.meta);
       } else {
-        setSkus((res as any) || []);
+        setSkus(Array.isArray(res) ? res : []);
         setSkuMeta(null);
       }
     } catch (err) {

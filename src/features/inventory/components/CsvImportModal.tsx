@@ -138,7 +138,7 @@ export function CsvImportModal({
                         </tr>
                       </thead>
                       <tbody>
-                        {importResult.errors.map((err, idx) => (
+                        {importResult.errors?.map((err, idx) => (
                           <tr key={idx} className="border-t border-outline-variant/40 hover:bg-surface-container/20">
                             <td className="px-4 py-2 font-mono text-on-surface font-semibold">{err.row}</td>
                             <td className="px-4 py-2 font-mono">{err.skuCode || '—'}</td>

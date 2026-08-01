@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   Building2,
   Loader2,
   MapPin,
-  Phone,
+  Pencil,
+  Plus,
   RefreshCw,
-  Package,
+  Trash2,
   Warehouse as WarehouseIcon,
-  User,
-  Mail,
   BarChart3,
+  Star,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,16 +25,17 @@ function formatDate(value?: string): string {
   return Number.isNaN(d.getTime()) ? '—' : new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(d);
 }
 
-function shortId(value: string): string {
-  return value.length > 10 ? `${value.slice(0, 10)}…` : value;
-}
-
 export default function Warehouses() {
+  const navigate = useNavigate();
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Warehouse | null>(null);
+
+  const [deleteTarget, setDeleteTarget] = useState<Warehouse | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const load = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -63,6 +66,22 @@ export default function Warehouses() {
 
   useEffect(() => { void load(); }, []);
 
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    setDeleteError(null);
+    try {
+      await warehouseApi.remove(deleteTarget.id);
+      setWarehouses((prev) => prev.filter((w) => w.id !== deleteTarget.id));
+      if (selected?.id === deleteTarget.id) setSelected(null);
+      setDeleteTarget(null);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete warehouse.');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -80,6 +99,10 @@ export default function Warehouses() {
             <Building2 className="h-4 w-4 text-accent" />
             <span className="text-sm font-semibold text-on-surface">{warehouses.length} location{(warehouses.length !== 1) ? 's' : ''}</span>
           </div>
+          <Button onClick={() => navigate('/warehouses/new')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Warehouse
+          </Button>
           <Button variant="outline" onClick={() => load(true)} disabled={loading || refreshing} className="gap-2">
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -122,43 +145,33 @@ export default function Warehouses() {
                       </div>
                       <div className="min-w-0">
                         <CardTitle className="text-base text-on-surface truncate">{w.name}</CardTitle>
-                        {w.code && (
-                          <CardDescription className="font-mono text-xs">{w.code}</CardDescription>
-                        )}
+                        <CardDescription className="text-xs">
+                          {w.location || 'No location set'}
+                        </CardDescription>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {w.city && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-surface-container px-2.5 py-1 text-[11px] font-medium text-on-surface-variant">
-                          <MapPin className="h-3 w-3" />
-                          {w.city}
+                      {w.isMain && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-secondary/10 px-2.5 py-1 text-[11px] font-medium text-secondary">
+                          <Star className="h-3 w-3" />
+                          Main
                         </span>
                       )}
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                        w.status === 'active'
+                          ? 'bg-green-500/10 text-green-700'
+                          : 'bg-red-500/10 text-red-700'
+                      }`}>
+                        {w.status === 'active' ? 'Active' : 'Inactive'}
+                      </span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/warehouses/${w.id}/edit`); }}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant opacity-0 group-hover:opacity-100 hover:bg-surface-container hover:text-accent transition-all"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
-
-                  {(w.address || w.phone || w.managerName) && (
-                    <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-on-surface-variant">
-                      {w.address && (
-                        <span className="flex items-center gap-1.5">
-                          <MapPin className="h-3.5 w-3.5" />
-                          {w.address}
-                        </span>
-                      )}
-                      {w.phone && (
-                        <span className="flex items-center gap-1.5">
-                          <Phone className="h-3.5 w-3.5" />
-                          {w.phone}
-                        </span>
-                      )}
-                      {w.managerName && (
-                        <span className="flex items-center gap-1.5">
-                          <User className="h-3.5 w-3.5" />
-                          {w.managerName}
-                        </span>
-                      )}
-                    </div>
-                  )}
 
                   {w.createdAt && (
                     <p className="mt-3 text-[11px] text-outline">Created {formatDate(w.createdAt)}</p>
@@ -174,58 +187,80 @@ export default function Warehouses() {
                 <Card className="border-outline-variant/60 shadow-sm overflow-hidden">
                   <div className="h-2 bg-accent" />
                   <CardHeader>
-                    <CardTitle className="text-xl text-on-surface">{selected.name}</CardTitle>
-                    <CardDescription>
-                      {selected.code ? `Code: ${selected.code}` : 'Warehouse details'}
-                    </CardDescription>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-xl text-on-surface">{selected.name}</CardTitle>
+                        <CardDescription>Warehouse details</CardDescription>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/warehouses/${selected.id}/edit`)}
+                          className="gap-2 shrink-0"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setDeleteTarget(selected)}
+                          className="gap-2 shrink-0"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
-                      {selected.managerName && (
-                        <div className="rounded-lg border border-outline-variant/60 p-3">
-                          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-on-surface-variant mb-1">
-                            <User className="h-3 w-3" />
-                            Manager
-                          </div>
-                          <p className="text-sm font-medium text-on-surface">{selected.managerName}</p>
-                        </div>
-                      )}
-                      {selected.managerEmail && (
-                        <div className="rounded-lg border border-outline-variant/60 p-3">
-                          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-on-surface-variant mb-1">
-                            <Mail className="h-3 w-3" />
-                            Email
-                          </div>
-                          <p className="text-sm font-medium text-on-surface truncate">{selected.managerEmail}</p>
-                        </div>
-                      )}
-                      {selected.city && (
+                      {selected.location && (
                         <div className="rounded-lg border border-outline-variant/60 p-3">
                           <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-on-surface-variant mb-1">
                             <MapPin className="h-3 w-3" />
-                            City
+                            Location
                           </div>
-                          <p className="text-sm font-medium text-on-surface">{selected.city}</p>
+                          <p className="text-sm font-medium text-on-surface">{selected.location}</p>
                         </div>
                       )}
-                      {selected.phone && (
+                      <div className="rounded-lg border border-outline-variant/60 p-3">
+                        <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-on-surface-variant mb-1">
+                          <Zap className="h-3 w-3" />
+                          Status
+                        </div>
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold ${
+                          selected.status === 'active'
+                            ? 'bg-green-500/10 text-green-700'
+                            : 'bg-red-500/10 text-red-700'
+                        }`}>
+                          {selected.status === 'active' ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <div className="rounded-lg border border-outline-variant/60 p-3">
+                        <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-on-surface-variant mb-1">
+                          <Star className="h-3 w-3" />
+                          Main Hub
+                        </div>
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold ${
+                          selected.isMain
+                            ? 'bg-secondary/10 text-secondary'
+                            : 'bg-outline-variant/30 text-on-surface-variant'
+                        }`}>
+                          {selected.isMain ? 'Yes' : 'No'}
+                        </span>
+                      </div>
+                      {selected.tenantId && (
                         <div className="rounded-lg border border-outline-variant/60 p-3">
                           <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-on-surface-variant mb-1">
-                            <Phone className="h-3 w-3" />
-                            Phone
+                            Tenant
                           </div>
-                          <p className="text-sm font-medium text-on-surface">{selected.phone}</p>
+                          <p className="text-sm font-mono text-on-surface truncate">{selected.tenantId.slice(0, 8)}…</p>
                         </div>
                       )}
                     </div>
-                    {selected.address && (
-                      <div className="rounded-lg border border-outline-variant/60 p-3">
-                        <div className="text-[11px] uppercase tracking-wider text-on-surface-variant mb-1">Address</div>
-                        <p className="text-sm text-on-surface">{selected.address}</p>
-                      </div>
-                    )}
                     <div className="pt-2 text-[11px] text-outline">
-                      ID: {shortId(selected.id)} &middot; Created: {formatDate(selected.createdAt)}
+                      Created: {formatDate(selected.createdAt)}
                     </div>
                   </CardContent>
                 </Card>
@@ -239,7 +274,7 @@ export default function Warehouses() {
                       <div>
                         <div className="text-sm font-semibold text-on-surface">{selected.name}</div>
                         <div className="text-xs text-on-surface-variant">
-                          Select this warehouse to view detailed stock and operations data.
+                          View detailed stock and operations data for this warehouse.
                         </div>
                       </div>
                     </div>
@@ -256,6 +291,62 @@ export default function Warehouses() {
                   </p>
                 </CardContent>
               </Card>
+            )}
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-primary/40 backdrop-blur-sm" onClick={() => !deleteLoading && setDeleteTarget(null)} />
+          <div className="relative bg-surface-container-lowest w-full max-w-md rounded-xl shadow-2xl border border-outline-variant overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-600">
+                  <AlertCircle className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-on-surface">Confirm Deletion</h3>
+                  <p className="text-sm text-on-surface-variant">Irreversible action</p>
+                </div>
+              </div>
+              <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
+                Are you sure you want to delete <strong className="text-on-surface">{deleteTarget.name}</strong>? This action cannot be undone and may affect pending shipments associated with this warehouse.
+              </p>
+              {deleteError && (
+                <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 mb-4">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{deleteError}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-3 justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={deleteLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={deleteLoading}
+                  className="gap-2"
+                >
+                  {deleteLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  Delete Warehouse
+                </Button>
+              </div>
+            </div>
+            {deleteLoading && (
+              <div className="h-1 w-full bg-red-100">
+                <div className="h-full bg-red-500 w-full animate-pulse" />
+              </div>
             )}
           </div>
         </div>

@@ -185,7 +185,7 @@ export default function Login() {
                   </div>
                   <span className="text-sm text-on-surface-variant group-hover:text-on-surface transition-colors">Remember me</span>
                 </label>
-                <a href="/forgot-password" onClick={(e) => e.preventDefault()} className="text-sm text-accent font-medium hover:underline">Forgot password?</a>
+                <a href="/forgot-password" onClick={(e) => { e.preventDefault(); navigate('/forgot-password'); }} className="text-sm text-accent font-medium hover:underline cursor-pointer">Forgot password?</a>
               </div>
             )}
 
