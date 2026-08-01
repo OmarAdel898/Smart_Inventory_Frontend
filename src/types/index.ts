@@ -80,8 +80,8 @@ export interface WarehouseResponse {
   id: string;
   name: string;
   location?: string | null;
-  status: string;
-  tenantId?: string | null;
+  status: 'active' | 'inactive';
+  tenantId: string;
   isMain: boolean;
   createdAt?: string;
   updatedAt?: string;
