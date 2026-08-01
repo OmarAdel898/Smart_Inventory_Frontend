@@ -2,6 +2,9 @@ export interface JwtPayload {
   sub?: string;
   email?: string;
   role?: string;
+  tenantId?: string;
+  tenant_id?: string;
+  tenant?: string;
   warehouseId?: string;
   warehouse_id?: string;
   warehouse?: string;
@@ -92,6 +95,15 @@ export function getWarehouseIdFromToken(tokenOrPayload: string | JwtPayload | nu
 
   const payload = typeof tokenOrPayload === 'string' ? decodeJwtPayload(tokenOrPayload) : tokenOrPayload;
   return getClaimAsString(payload, ['warehouseId', 'warehouse_id', 'warehouse']);
+}
+
+export function getTenantIdFromToken(tokenOrPayload: string | JwtPayload | null | undefined): string | null {
+  if (!tokenOrPayload) {
+    return null;
+  }
+
+  const payload = typeof tokenOrPayload === 'string' ? decodeJwtPayload(tokenOrPayload) : tokenOrPayload;
+  return getClaimAsString(payload, ['tenantId', 'tenant_id', 'tenant']);
 }
 
 export function isTokenExpired(tokenOrPayload: string | JwtPayload | null | undefined): boolean {
