@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { api, ApiError } from '@/api/client';
+import { forgotPasswordSchema } from '@/features/auth/validations';
 
 function FormField({ id, type, placeholder, label, value, onChange, error, required }: {
   id: string; type: string; placeholder: string; label: string;
@@ -32,6 +33,7 @@ export default function ForgotPassword() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -39,9 +41,14 @@ export default function ForgotPassword() {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    setFieldErrors({});
     
-    if (!email) {
-      setError('Please enter your email address');
+    const parsed = forgotPasswordSchema.safeParse({ email });
+    if (!parsed.success) {
+      const flat = parsed.error.flatten().fieldErrors;
+      setFieldErrors({
+        ...(flat.email?.[0] && { email: flat.email[0] }),
+      });
       return;
     }
 
@@ -112,6 +119,7 @@ export default function ForgotPassword() {
                 label="Email Address"
                 value={email}
                 onChange={setEmail}
+                error={fieldErrors.email}
                 required
               />
 
