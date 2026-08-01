@@ -4,6 +4,8 @@ import TopAppBar from '@/components/TopAppBar';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import RequirePermission from '@/components/RequirePermission';
 import Login from '@/pages/Login';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
 import Dashboard from '@/pages/Dashboard';
 import BranchDashboard from '@/pages/BranchDashboard';
 import { useAuthStore } from '@/store/authStore';
@@ -46,6 +48,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<RootDashboard />} />
