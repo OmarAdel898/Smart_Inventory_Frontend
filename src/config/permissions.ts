@@ -24,7 +24,9 @@ export type Permission =
   | 'purchaseOrders.manage'
   | 'sidebar.warehouses'
   | 'warehouses.view'
-  | 'warehouses.manage';
+  | 'warehouses.manage'
+  | 'sidebar.movements'
+  | 'movements.view';
 
 type PermissionMap = Partial<Record<string, Permission[]>>;
 
@@ -32,7 +34,7 @@ const ROLE_PERMISSIONS: PermissionMap = {
   super_admin: [
     'sidebar.dashboard', 'sidebar.users', 'sidebar.inventory', 'sidebar.vendors',
     'sidebar.approvals', 'sidebar.purchaseOrders', 'sidebar.negotiations',
-    'sidebar.anomalies', 'sidebar.assistant', 'sidebar.warehouses',
+    'sidebar.anomalies', 'sidebar.assistant', 'sidebar.warehouses', 'sidebar.movements',
     'dashboard.view', 'dashboard.branch',
     'approvals.view', 'approvals.approve', 'approvals.reject', 'approvals.editPayload',
     'users.view', 'users.manage',
@@ -40,11 +42,12 @@ const ROLE_PERMISSIONS: PermissionMap = {
     'vendors.view', 'vendors.manage',
     'purchaseOrders.view', 'purchaseOrders.manage',
     'warehouses.view', 'warehouses.manage',
+    'movements.view',
   ],
   tenant_owner: [
     'sidebar.dashboard', 'sidebar.users', 'sidebar.inventory', 'sidebar.vendors',
     'sidebar.approvals', 'sidebar.purchaseOrders', 'sidebar.negotiations',
-    'sidebar.anomalies', 'sidebar.assistant', 'sidebar.warehouses',
+    'sidebar.anomalies', 'sidebar.assistant', 'sidebar.warehouses', 'sidebar.movements',
     'dashboard.view',
     'approvals.view', 'approvals.approve', 'approvals.reject', 'approvals.editPayload',
     'users.view', 'users.manage',
@@ -52,18 +55,19 @@ const ROLE_PERMISSIONS: PermissionMap = {
     'vendors.view', 'vendors.manage',
     'purchaseOrders.view', 'purchaseOrders.manage',
     'warehouses.view', 'warehouses.manage',
+    'movements.view',
   ],
   warehouse_manager: [
-    'sidebar.dashboard', 'sidebar.users', 'sidebar.inventory', 'sidebar.vendors',
+    'sidebar.dashboard', 'sidebar.inventory', 'sidebar.vendors',
     'sidebar.approvals', 'sidebar.purchaseOrders', 'sidebar.anomalies',
-    'sidebar.assistant', 'sidebar.warehouses',
+    'sidebar.assistant', 'sidebar.warehouses', 'sidebar.movements',
     'dashboard.view',
     'approvals.view', 'approvals.approve', 'approvals.reject',
-    'users.view',
     'inventory.view', 'inventory.manage',
     'vendors.view',
     'purchaseOrders.view',
     'warehouses.view', 'warehouses.manage',
+    'movements.view',
   ],
   branch_manager: [
     'sidebar.dashboard', 'sidebar.inventory', 'sidebar.vendors',
@@ -96,10 +100,11 @@ const ROLE_PERMISSIONS: PermissionMap = {
   ],
   inventory_clerk: [
     'sidebar.dashboard', 'sidebar.inventory',
-    'sidebar.purchaseOrders', 'sidebar.anomalies',
+    'sidebar.purchaseOrders', 'sidebar.anomalies', 'sidebar.movements',
     'dashboard.view',
     'inventory.view', 'inventory.manage',
     'purchaseOrders.view',
+    'movements.view',
   ],
 };
 
