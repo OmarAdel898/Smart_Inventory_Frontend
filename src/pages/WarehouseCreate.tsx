@@ -11,21 +11,13 @@ import {
   Warehouse as WarehouseIcon,
   Zap,
 } from 'lucide-react';
-import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { warehouseApi } from '@/api/warehouse.api';
-
-const warehouseSchema = z.object({
-  name: z
-    .string()
-    .min(2, 'Warehouse name must be at least 2 characters')
-    .max(255, 'Warehouse name must be at most 255 characters'),
-  location: z.string().max(255).optional().or(z.literal('')),
-  status: z.enum(['active', 'inactive']).optional(),
-});
+import { warehouseSchema } from '@/features/warehouses/validations';
+import { z } from 'zod';
 
 type WarehouseFormValues = z.infer<typeof warehouseSchema>;
 
