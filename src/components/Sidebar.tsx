@@ -6,6 +6,7 @@ const linkConfig = [
   { to: '/', label: 'Dashboard', icon: 'dashboard', perm: 'sidebar.dashboard' as const },
   { to: '/users', label: 'Users', icon: 'group', perm: 'sidebar.users' as const },
   { to: '/inventory', label: 'Inventory', icon: 'inventory_2', perm: 'sidebar.inventory' as const },
+  { to: '/categories', label: 'Categories', icon: 'category', perm: 'sidebar.inventory' as const },
   { to: '/warehouses', label: 'Warehouses', icon: 'warehouse', perm: 'sidebar.warehouses' as const },
   { to: '/vendors', label: 'Vendors', icon: 'handshake', perm: 'sidebar.vendors' as const },
   { to: '/approvals', label: 'Approvals', icon: 'fact_check', perm: 'sidebar.approvals' as const },
