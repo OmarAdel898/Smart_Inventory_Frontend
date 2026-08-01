@@ -4,12 +4,8 @@ import {
   Building2,
   Loader2,
   MapPin,
-  Phone,
   RefreshCw,
-  Package,
   Warehouse as WarehouseIcon,
-  User,
-  Mail,
   BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -108,43 +104,37 @@ export default function Warehouses() {
                       </div>
                       <div className="min-w-0">
                         <CardTitle className="text-base text-on-surface truncate">{w.name}</CardTitle>
-                        {w.code && (
-                          <CardDescription className="font-mono text-xs">{w.code}</CardDescription>
+                        {w.location && (
+                          <CardDescription className="font-mono text-xs">{w.location}</CardDescription>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {w.city && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-surface-container px-2.5 py-1 text-[11px] font-medium text-on-surface-variant">
-                          <MapPin className="h-3 w-3" />
-                          {w.city}
+                      {w.isMain && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-medium text-accent">
+                          Main
                         </span>
                       )}
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                          w.status === 'active'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-surface-container text-on-surface-variant'
+                        }`}
+                      >
+                        {w.status}
+                      </span>
                     </div>
                   </div>
 
-                  {(w.address || w.phone || w.managerName) && (
-                    <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-on-surface-variant">
-                      {w.address && (
-                        <span className="flex items-center gap-1.5">
-                          <MapPin className="h-3.5 w-3.5" />
-                          {w.address}
-                        </span>
-                      )}
-                      {w.phone && (
-                        <span className="flex items-center gap-1.5">
-                          <Phone className="h-3.5 w-3.5" />
-                          {w.phone}
-                        </span>
-                      )}
-                      {w.managerName && (
-                        <span className="flex items-center gap-1.5">
-                          <User className="h-3.5 w-3.5" />
-                          {w.managerName}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-on-surface-variant">
+                    {w.location && (
+                      <span className="flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {w.location}
+                      </span>
+                    )}
+                  </div>
 
                   {w.createdAt && (
                     <p className="mt-3 text-[11px] text-outline">Created {formatDate(w.createdAt)}</p>
@@ -162,54 +152,44 @@ export default function Warehouses() {
                   <CardHeader>
                     <CardTitle className="text-xl text-on-surface">{selected.name}</CardTitle>
                     <CardDescription>
-                      {selected.code ? `Code: ${selected.code}` : 'Warehouse details'}
+                      {selected.location ? `Location: ${selected.location}` : 'Warehouse details'}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
-                      {selected.managerName && (
-                        <div className="rounded-lg border border-outline-variant/60 p-3">
-                          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-on-surface-variant mb-1">
-                            <User className="h-3 w-3" />
-                            Manager
-                          </div>
-                          <p className="text-sm font-medium text-on-surface">{selected.managerName}</p>
+                      <div className="rounded-lg border border-outline-variant/60 p-3">
+                        <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-on-surface-variant mb-1">
+                          <BarChart3 className="h-3 w-3" />
+                          Status
                         </div>
-                      )}
-                      {selected.managerEmail && (
-                        <div className="rounded-lg border border-outline-variant/60 p-3">
-                          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-on-surface-variant mb-1">
-                            <Mail className="h-3 w-3" />
-                            Email
-                          </div>
-                          <p className="text-sm font-medium text-on-surface truncate">{selected.managerEmail}</p>
+                        <p className="text-sm font-medium text-on-surface capitalize">{selected.status}</p>
+                      </div>
+                      <div className="rounded-lg border border-outline-variant/60 p-3">
+                        <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-on-surface-variant mb-1">
+                          <WarehouseIcon className="h-3 w-3" />
+                          Main
                         </div>
-                      )}
-                      {selected.city && (
+                        <p className="text-sm font-medium text-on-surface">{selected.isMain ? 'Yes' : 'No'}</p>
+                      </div>
+                      {selected.location && (
                         <div className="rounded-lg border border-outline-variant/60 p-3">
                           <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-on-surface-variant mb-1">
                             <MapPin className="h-3 w-3" />
-                            City
+                            Location
                           </div>
-                          <p className="text-sm font-medium text-on-surface">{selected.city}</p>
+                          <p className="text-sm font-medium text-on-surface">{selected.location}</p>
                         </div>
                       )}
-                      {selected.phone && (
+                      {selected.tenantId && (
                         <div className="rounded-lg border border-outline-variant/60 p-3">
                           <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-on-surface-variant mb-1">
-                            <Phone className="h-3 w-3" />
-                            Phone
+                            <Building2 className="h-3 w-3" />
+                            Tenant
                           </div>
-                          <p className="text-sm font-medium text-on-surface">{selected.phone}</p>
+                          <p className="text-sm font-medium text-on-surface font-mono">{shortId(selected.tenantId)}</p>
                         </div>
                       )}
                     </div>
-                    {selected.address && (
-                      <div className="rounded-lg border border-outline-variant/60 p-3">
-                        <div className="text-[11px] uppercase tracking-wider text-on-surface-variant mb-1">Address</div>
-                        <p className="text-sm text-on-surface">{selected.address}</p>
-                      </div>
-                    )}
                     <div className="pt-2 text-[11px] text-outline">
                       ID: {shortId(selected.id)} &middot; Created: {formatDate(selected.createdAt)}
                     </div>

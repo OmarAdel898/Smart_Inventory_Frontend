@@ -33,7 +33,7 @@ interface LowStockItem {
 interface Warehouse {
   id: string;
   name: string;
-  code?: string;
+  location?: string;
 }
 
 interface StockMovement {
