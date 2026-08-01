@@ -3,12 +3,15 @@ import { setTokenCookie, removeTokenCookie } from '@/api/client';
 
 export interface User {
   id: string;
+  name?: string | null;
   email: string;
   username: string;
-  firstName?: string | null;
-  lastName?: string | null;
   role: string;
   isActive: boolean;
+  tenantId?: string | null;
+  warehouseId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface AuthState {

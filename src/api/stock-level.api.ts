@@ -24,7 +24,7 @@ export const stockLevelApi = {
     return api.get<ApiPaginatedResponse<StockLevelResponse>>(path);
   },
 
-  update: (id: string, data: UpdateStockLevelRequest) => {
-    return api.patch<StockLevelResponse>(`/stock-levels/${id}`, data);
+  update: (warehouseId: string, id: string, data: UpdateStockLevelRequest) => {
+    return api.patch<StockLevelResponse>(`/warehouses/${warehouseId}/stock-levels/${id}`, data);
   },
 };

@@ -217,7 +217,7 @@ export default function BranchDashboard() {
   }
 
   const warehouseName = snapshot?.warehouse?.name || 'Assigned Warehouse';
-  const warehouseCode = snapshot?.warehouse?.code || '—';
+  const warehouseLocation = snapshot?.warehouse?.location || '—';
 
   return (
     <div className="space-y-6">
@@ -226,7 +226,7 @@ export default function BranchDashboard() {
           <p className="text-sm font-medium text-accent">Warehouse Manager Dashboard</p>
           <h1 className="text-3xl font-semibold tracking-tight text-on-surface">{warehouseName}</h1>
           <p className="mt-1 text-sm text-on-surface-variant">
-            Live operational snapshot for warehouse {warehouseCode}.
+            Live operational snapshot for warehouse at {warehouseLocation}.
           </p>
         </div>
 
@@ -239,7 +239,7 @@ export default function BranchDashboard() {
               <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-on-surface-variant">
                 Warehouse
               </p>
-              <p className="text-base font-semibold text-on-surface">{warehouseCode}</p>
+              <p className="text-base font-semibold text-on-surface">{warehouseLocation}</p>
             </div>
           </div>
           <Button variant="outline" onClick={() => loadSnapshot(true)} disabled={refreshing} className="gap-2">
@@ -481,8 +481,8 @@ export default function BranchDashboard() {
 
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="rounded-lg border border-outline-variant/60 p-3">
-                  <div className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">Code</div>
-                  <div className="mt-1 font-medium text-on-surface">{warehouseCode}</div>
+                  <div className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">Location</div>
+                  <div className="mt-1 font-medium text-on-surface">{warehouseLocation}</div>
                 </div>
                 <div className="rounded-lg border border-outline-variant/60 p-3">
                   <div className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">Items</div>
