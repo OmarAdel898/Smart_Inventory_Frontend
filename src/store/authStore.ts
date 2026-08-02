@@ -8,6 +8,7 @@ export interface User {
   username: string;
   role: string;
   isActive: boolean;
+  avatarUrl?: string | null;
   tenantId?: string | null;
   warehouseId?: string | null;
   createdAt?: string;
@@ -19,6 +20,7 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   setAuth: (user: User | null, token: string) => void;
+  updateUser: (patch: Partial<User>) => void;
   logout: () => void;
 }
 
@@ -54,6 +56,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     saveUser(user);
     set({ user, token, isAuthenticated: true });
   },
+
+  updateUser: (patch) =>
+    set((state) => {
+      if (!state.user) return {};
+      const nextUser = { ...state.user, ...patch };
+      saveUser(nextUser);
+      return { user: nextUser };
+    }),
 
   logout: () => {
     removeTokenCookie();

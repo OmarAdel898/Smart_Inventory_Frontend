@@ -8,6 +8,7 @@ export type Permission =
   | 'sidebar.negotiations'
   | 'sidebar.anomalies'
   | 'sidebar.assistant'
+  | 'sidebar.profile'
   | 'dashboard.view'
   | 'dashboard.branch'
   | 'approvals.view'
@@ -34,7 +35,7 @@ const ROLE_PERMISSIONS: PermissionMap = {
   super_admin: [
     'sidebar.dashboard', 'sidebar.users', 'sidebar.inventory', 'sidebar.vendors',
     'sidebar.approvals', 'sidebar.purchaseOrders', 'sidebar.negotiations',
-    'sidebar.anomalies', 'sidebar.assistant', 'sidebar.warehouses', 'sidebar.movements',
+    'sidebar.anomalies', 'sidebar.assistant', 'sidebar.profile', 'sidebar.warehouses', 'sidebar.movements',
     'dashboard.view', 'dashboard.branch',
     'approvals.view', 'approvals.approve', 'approvals.reject', 'approvals.editPayload',
     'users.view', 'users.manage',
@@ -47,7 +48,7 @@ const ROLE_PERMISSIONS: PermissionMap = {
   tenant_owner: [
     'sidebar.dashboard', 'sidebar.users', 'sidebar.inventory', 'sidebar.vendors',
     'sidebar.approvals', 'sidebar.purchaseOrders', 'sidebar.negotiations',
-    'sidebar.anomalies', 'sidebar.assistant', 'sidebar.warehouses', 'sidebar.movements',
+    'sidebar.anomalies', 'sidebar.assistant', 'sidebar.profile', 'sidebar.warehouses', 'sidebar.movements',
     'dashboard.view',
     'approvals.view', 'approvals.approve', 'approvals.reject', 'approvals.editPayload',
     'users.view', 'users.manage',
@@ -60,7 +61,7 @@ const ROLE_PERMISSIONS: PermissionMap = {
   warehouse_manager: [
     'sidebar.dashboard', 'sidebar.inventory', 'sidebar.vendors',
     'sidebar.approvals', 'sidebar.purchaseOrders', 'sidebar.anomalies',
-    'sidebar.assistant', 'sidebar.warehouses', 'sidebar.movements',
+    'sidebar.assistant', 'sidebar.profile', 'sidebar.warehouses', 'sidebar.movements',
     'dashboard.view',
     'approvals.view', 'approvals.approve', 'approvals.reject',
     'inventory.view', 'inventory.manage',
@@ -72,6 +73,7 @@ const ROLE_PERMISSIONS: PermissionMap = {
   branch_manager: [
     'sidebar.dashboard', 'sidebar.inventory', 'sidebar.vendors',
     'sidebar.approvals', 'sidebar.purchaseOrders',
+    'sidebar.profile',
     'dashboard.branch',
     'inventory.view',
     'vendors.view',
@@ -80,6 +82,7 @@ const ROLE_PERMISSIONS: PermissionMap = {
   ],
   procurement_officer: [
     'sidebar.dashboard', 'sidebar.vendors', 'sidebar.approvals', 'sidebar.purchaseOrders',
+    'sidebar.profile',
     'dashboard.view',
     'approvals.view', 'approvals.approve', 'approvals.reject', 'approvals.editPayload',
     'vendors.view', 'vendors.manage',
@@ -87,20 +90,21 @@ const ROLE_PERMISSIONS: PermissionMap = {
   ],
   analyst: [
     'sidebar.dashboard', 'sidebar.inventory', 'sidebar.approvals',
-    'sidebar.anomalies', 'sidebar.assistant',
+    'sidebar.anomalies', 'sidebar.assistant', 'sidebar.profile',
     'dashboard.view',
     'inventory.view',
     'approvals.view',
   ],
   viewer: [
     'sidebar.dashboard', 'sidebar.inventory',
+    'sidebar.profile',
     'dashboard.view',
     'inventory.view',
     'approvals.view',
   ],
   inventory_clerk: [
     'sidebar.dashboard', 'sidebar.inventory',
-    'sidebar.purchaseOrders', 'sidebar.anomalies', 'sidebar.movements',
+    'sidebar.purchaseOrders', 'sidebar.anomalies', 'sidebar.movements', 'sidebar.profile',
     'dashboard.view',
     'inventory.view', 'inventory.manage',
     'purchaseOrders.view',

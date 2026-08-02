@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/authStore';
 
 const linkConfig = [
   { to: '/', label: 'Dashboard', icon: 'dashboard', perm: 'sidebar.dashboard' as const },
+  { to: '/profile', label: 'Profile', icon: 'person', perm: 'sidebar.profile' as const },
   { to: '/users', label: 'Users', icon: 'group', perm: 'sidebar.users' as const },
   { to: '/inventory', label: 'Inventory', icon: 'inventory_2', perm: 'sidebar.inventory' as const },
   { to: '/categories', label: 'Categories', icon: 'category', perm: 'sidebar.inventory' as const },

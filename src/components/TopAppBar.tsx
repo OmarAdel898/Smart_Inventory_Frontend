@@ -1,3 +1,5 @@
+import { useEffect, useMemo, useState } from 'react';
+import { API_BASE } from '@/api/_shared';
 import { useAuthStore } from '@/store/authStore';
 
 function formatRole(role: string): string {
@@ -10,6 +12,29 @@ function formatRole(role: string): string {
 export default function TopAppBar() {
   const user = useAuthStore((s) => s.user);
   const roleLabel = user?.role ? formatRole(user.role) : '';
+  const [avatarFailed, setAvatarFailed] = useState(false);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [user?.avatarUrl]);
+
+  const avatarSrc = useMemo(() => {
+    const value = user?.avatarUrl?.trim();
+    if (!value) return null;
+    if (/^https?:\/\//i.test(value)) return value;
+    if (value.startsWith('/')) return `${API_BASE}${value}`;
+    if (value.includes('/')) return `${API_BASE}/${value}`;
+    return `${API_BASE}/uploads/avatars/${value}`;
+  }, [user?.avatarUrl]);
+
+  const initials = useMemo(() => {
+    const source = (user?.name || user?.email || 'U').trim();
+    const parts = source.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return source.slice(0, 2).toUpperCase();
+  }, [user?.email, user?.name]);
 
   return (
     <header className="h-16 shrink-0 border-b border-outline-variant bg-surface flex items-center justify-between px-8">
@@ -35,11 +60,20 @@ export default function TopAppBar() {
             </span>
           )}
           <button className="text-on-surface-variant hover:text-primary transition-opacity flex items-center gap-2">
-            <img
-              className="w-8 h-8 rounded-full object-cover border border-outline-variant"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDmWl0Epkp4EQQsMilOhaLPYoxXDZ_F8n8O7NQ75EcWRZseyyvy95iuMZFegaY1YORzuFXDJgJCBvDBCD3b87zFjnBpPbI3kjyOmmG5glr5qR4kyiMxRA668tpgDJvbddjAc4ZSvd-2qh9dbLlQDQKu2rHBypHW70quRC7a2OjWU7_JuIPXB7s5vMIto-cikDAtOdEMIvOInDsARWlifbV-uzloUFyUG542Cg-WYfgAbOYD1S-naSOmjd23GJKZMEW-PdvIICq-B7M"
-              alt="User avatar"
-            />
+            <div className="w-8 h-8 rounded-full overflow-hidden border border-outline-variant bg-surface-container-lowest flex items-center justify-center shadow-sm">
+              {avatarSrc && !avatarFailed ? (
+                <img
+                  className="w-full h-full object-cover"
+                  src={avatarSrc}
+                  alt="User avatar"
+                  onError={() => setAvatarFailed(true)}
+                />
+              ) : (
+                <span className="text-[11px] font-semibold text-on-surface-variant">
+                  {initials}
+                </span>
+              )}
+            </div>
           </button>
         </div>
       </div>
