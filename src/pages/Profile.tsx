@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { profileApi, type ProfileResponse } from '@/api/profile.api';
+import { useAuthStore } from '@/store/authStore';
 
 type ProfileFormState = {
   name: string;
@@ -90,6 +91,7 @@ function ProfileField({
 
 export default function Profile() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const updateAuthUser = useAuthStore((s) => s.updateUser);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [form, setForm] = useState<ProfileFormState>({
     name: '',
@@ -115,6 +117,10 @@ export default function Profile() {
       if (signal?.aborted) return;
 
       setProfile(data);
+      updateAuthUser({
+        name: data.name,
+        avatarUrl: data.avatarUrl,
+      });
       setForm({
         name: data.name || '',
         phone: data.phone || '',
@@ -199,6 +205,7 @@ export default function Profile() {
               }
             : current,
         );
+        updateAuthUser({ avatarUrl });
 
         setPreviewUrl(avatarUrl);
       }
@@ -232,6 +239,10 @@ export default function Profile() {
       });
 
       setProfile(updated);
+      updateAuthUser({
+        name: updated.name,
+        avatarUrl: updated.avatarUrl,
+      });
       setForm({
         name: updated.name || '',
         phone: updated.phone || '',
