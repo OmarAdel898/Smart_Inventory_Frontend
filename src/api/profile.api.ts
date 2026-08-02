@@ -1,4 +1,5 @@
-import { requestJson, requestMultipart } from './_shared';
+import { API_BASE, requestJson } from './_shared';
+import { createAuthHeaders, getAccessTokenFromCookie } from '@/lib/auth';
 
 export interface ProfileResponse {
   id: string;
@@ -51,6 +52,22 @@ function resolveAvatarUrl(value: unknown): string | null {
   return null;
 }
 
+function normalizeAvatarUrl(value: string | null): string | null {
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith('/')) return `${API_BASE}${value}`;
+  return `${API_BASE}/${value}`;
+}
+
+async function parseUploadBody(response: Response): Promise<unknown> {
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    return response.json().catch(() => null);
+  }
+
+  return response.text().catch(() => null);
+}
+
 export const profileApi = {
   getMe: async () => unwrapProfile(await requestJson<unknown>('/users/me')),
   updateMe: async (payload: UpdateProfilePayload) =>
@@ -62,10 +79,42 @@ export const profileApi = {
       }),
     ),
   uploadAvatar: async (file: File) => {
-    const formData = new FormData();
-    formData.append('avatar', file);
+    const fieldNames = ['file', 'avatar', 'image'];
+    let lastError = 'Unable to upload avatar.';
 
-    const response = await requestMultipart<unknown>('/uploads/avatar', formData);
-    return resolveAvatarUrl(response);
+    for (const fieldName of fieldNames) {
+      const formData = new FormData();
+      formData.append(fieldName, file, file.name);
+
+      const token = getAccessTokenFromCookie();
+      const response = await fetch(`${API_BASE}/uploads/avatar`, {
+        method: 'POST',
+        headers: token ? createAuthHeaders(token) : {},
+        body: formData,
+      });
+
+      const body = await parseUploadBody(response);
+
+      if (response.ok) {
+        return normalizeAvatarUrl(resolveAvatarUrl(body) ?? (typeof body === 'string' ? body : null));
+      }
+
+      const message =
+        (typeof body === 'string' && body.trim()) ||
+        (body && typeof body === 'object'
+          ? (body as { meta?: { message?: string }; message?: string; error?: string }).meta?.message ||
+            (body as { message?: string }).message ||
+            (body as { error?: string }).error
+          : null) ||
+        `Request failed (${response.status})`;
+
+      lastError = Array.isArray(message) ? message.join(', ') : message;
+
+      if (response.status !== 400 && response.status !== 422) {
+        break;
+      }
+    }
+
+    throw new Error(lastError);
   },
 };
