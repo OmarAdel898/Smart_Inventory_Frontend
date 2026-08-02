@@ -56,7 +56,8 @@ function normalizeAvatarUrl(value: string | null): string | null {
   if (!value) return null;
   if (/^https?:\/\//i.test(value)) return value;
   if (value.startsWith('/')) return `${API_BASE}${value}`;
-  return `${API_BASE}/${value}`;
+  if (value.includes('/')) return `${API_BASE}/${value}`;
+  return `${API_BASE}/uploads/avatars/${value}`;
 }
 
 function normalizeProfile(profile: ProfileResponse): ProfileResponse {
