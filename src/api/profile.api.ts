@@ -59,6 +59,13 @@ function normalizeAvatarUrl(value: string | null): string | null {
   return `${API_BASE}/${value}`;
 }
 
+function normalizeProfile(profile: ProfileResponse): ProfileResponse {
+  return {
+    ...profile,
+    avatarUrl: normalizeAvatarUrl(profile.avatarUrl),
+  };
+}
+
 async function parseUploadBody(response: Response): Promise<unknown> {
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
@@ -69,14 +76,16 @@ async function parseUploadBody(response: Response): Promise<unknown> {
 }
 
 export const profileApi = {
-  getMe: async () => unwrapProfile(await requestJson<unknown>('/users/me')),
+  getMe: async () => normalizeProfile(unwrapProfile(await requestJson<unknown>('/users/me'))),
   updateMe: async (payload: UpdateProfilePayload) =>
-    unwrapProfile(
-      await requestJson<unknown>('/users/me', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }),
+    normalizeProfile(
+      unwrapProfile(
+        await requestJson<unknown>('/users/me', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }),
+      ),
     ),
   uploadAvatar: async (file: File) => {
     const fieldNames = ['file', 'avatar', 'image'];
