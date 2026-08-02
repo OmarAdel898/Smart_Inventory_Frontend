@@ -8,6 +8,7 @@ import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import Dashboard from '@/pages/Dashboard';
 import BranchDashboard from '@/pages/BranchDashboard';
+import Profile from '@/pages/Profile';
 import { useAuthStore } from '@/store/authStore';
 import { getAccessTokenFromCookie, getWarehouseIdFromToken } from '@/lib/auth';
 import Inventory from '@/pages/Inventory';
@@ -59,6 +60,9 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<RootDashboard />} />
+          <Route element={<RequirePermission permission="sidebar.profile" />}>
+            <Route path="profile" element={<Profile />} />
+          </Route>
           
           <Route element={<RequirePermission permission="sidebar.users" />}>
             <Route path="users" element={<Users />} />
