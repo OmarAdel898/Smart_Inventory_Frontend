@@ -11,6 +11,8 @@ export interface User {
   avatarUrl?: string | null;
   tenantId?: string | null;
   warehouseId?: string | null;
+  phone?: string | null;
+  location?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

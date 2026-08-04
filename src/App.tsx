@@ -1,4 +1,4 @@
-import { Routes, Route, Outlet } from 'react-router-dom';
+import { Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
 import TopAppBar from '@/components/TopAppBar';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -26,8 +26,16 @@ import Users from '@/pages/Users';
 import StockMovements from '@/pages/StockMovements';
 import Categories from '@/pages/Categories';
 import CategoryCreate from '@/pages/CategoryCreate';
+import Onboarding from '@/pages/Onboarding';
 
 function AppLayout() {
+  const user = useAuthStore((s) => s.user);
+  
+  // If user is tenant_owner and doesn't have a warehouse, force onboarding
+  if (user?.role === 'tenant_owner' && !user.warehouseId) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
@@ -57,7 +65,10 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      
       <Route element={<ProtectedRoute />}>
+        <Route path="/onboarding" element={<Onboarding />} />
+        
         <Route element={<AppLayout />}>
           <Route index element={<RootDashboard />} />
           <Route element={<RequirePermission permission="sidebar.profile" />}>
