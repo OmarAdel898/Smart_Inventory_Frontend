@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getAccessTokenFromCookie } from '@/lib/auth';
+import { usePermissions } from '@/hooks/useCan';
 
 export type StockMovement = {
   id: string;
@@ -46,6 +47,7 @@ function getReasonStyle(reason: string) {
 }
 
 export default function StockMovements() {
+  const { can } = usePermissions();
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +55,86 @@ export default function StockMovements() {
   // Filters state
   const [reasonFilter, setReasonFilter] = useState<string>('all');
   const [warehouseIdFilter, setWarehouseIdFilter] = useState<string>('');
+
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [skus, setSkus] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [formSkuId, setFormSkuId] = useState('');
+  const [formWarehouseId, setFormWarehouseId] = useState('');
+  const [formQuantity, setFormQuantity] = useState<number | ''>('');
+  const [formReason, setFormReason] = useState('sale');
+  const [formNote, setFormNote] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const openModal = async () => {
+    setIsModalOpen(true);
+    setFormError(null);
+    setFormSkuId('');
+    setFormWarehouseId('');
+    setFormQuantity('');
+    setFormReason('sale');
+    setFormNote('');
+    try {
+      const token = getAccessTokenFromCookie();
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+      const [skusRes, whRes] = await Promise.all([
+        fetch(`${API_BASE}/sku`, { headers }),
+        fetch(`${API_BASE}/warehouses`, { headers })
+      ]);
+      if (skusRes.ok) {
+        const d = await skusRes.json();
+        setSkus(Array.isArray(d) ? d : d.data || []);
+      }
+      if (whRes.ok) {
+        const d = await whRes.json();
+        setWarehouses(Array.isArray(d) ? d : d.data || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleRecordMovement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    if (!formSkuId || !formWarehouseId || formQuantity === '') {
+      setFormError('SKU, Warehouse, and Quantity are required.');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const token = getAccessTokenFromCookie();
+      const res = await fetch(`${API_BASE}/inventory/stock-movements`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          skuId: formSkuId,
+          warehouseId: formWarehouseId,
+          quantityChange: Number(formQuantity),
+          reason: formReason,
+          note: formNote || undefined
+        })
+      });
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.meta?.message || payload?.message || `Failed to record movement`);
+      }
+
+      setIsModalOpen(false);
+      loadMovements();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Failed to record movement');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const loadMovements = async (signal?: AbortSignal) => {
     setLoading(true);
@@ -217,6 +299,15 @@ export default function StockMovements() {
         <div className="px-6 py-4 border-b border-outline-variant/60 flex justify-between items-center bg-surface-lowest">
           <h4 className="text-lg text-on-surface font-bold">Movement Log</h4>
           <div className="flex gap-2">
+            {can('movements.manage') && (
+              <button 
+                onClick={openModal}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-transparent bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-all shadow-sm"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                Record Movement
+              </button>
+            )}
             <button 
               onClick={() => loadMovements()}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant text-sm font-medium hover:bg-surface-container-low transition-all"
@@ -333,6 +424,119 @@ export default function StockMovements() {
           </div>
         )}
       </div>
+
+      {/* Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="w-full max-w-[500px] bg-surface-lowest border border-outline-variant rounded-xl shadow-xl flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-outline-variant flex justify-between items-center bg-surface-lowest rounded-t-xl shrink-0">
+              <h3 className="text-lg font-bold text-on-surface">Record Movement</h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-on-surface-variant hover:text-on-surface">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            
+            <form onSubmit={handleRecordMovement} className="p-6 overflow-y-auto flex-1 space-y-4">
+              {formError && (
+                <div className="p-3 bg-error-container/20 border border-error/50 rounded-lg text-sm text-error font-medium">
+                  {formError}
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-sm font-bold text-on-surface mb-1">SKU</label>
+                <select
+                  required
+                  value={formSkuId}
+                  onChange={e => setFormSkuId(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-surface-lowest border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20 outline-none"
+                >
+                  <option value="" disabled>Select SKU...</option>
+                  {skus.map(s => (
+                    <option key={s.id} value={s.id}>{s.name || s.id}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-on-surface mb-1">Warehouse</label>
+                <select
+                  required
+                  value={formWarehouseId}
+                  onChange={e => setFormWarehouseId(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-surface-lowest border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20 outline-none"
+                >
+                  <option value="" disabled>Select Warehouse...</option>
+                  {warehouses.map(w => (
+                    <option key={w.id} value={w.id}>{w.name || w.id}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-on-surface mb-1">Quantity Change</label>
+                <input
+                  type="number"
+                  required
+                  value={formQuantity}
+                  onChange={e => setFormQuantity(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="-50 or 100"
+                  className="w-full px-3 py-2 text-sm bg-surface-lowest border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-on-surface mb-1">Reason</label>
+                <select
+                  required
+                  value={formReason}
+                  onChange={e => setFormReason(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-surface-lowest border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20 outline-none"
+                >
+                  <option value="sale">Sale / Outgoing Order</option>
+                  <option value="manual_adjustment">Manual Adjustment</option>
+                  <option value="purchase_order_receipt">Purchase Order Receipt</option>
+                  <option value="customer_return">Customer Return</option>
+                  <option value="supplier_return">Supplier Return</option>
+                  <option value="write_off">Write Off / Damage</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-on-surface mb-1">Note (Optional)</label>
+                <textarea
+                  value={formNote}
+                  onChange={e => setFormNote(e.target.value)}
+                  placeholder="e.g. Customer order #123"
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm bg-surface-lowest border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20 outline-none resize-none"
+                />
+              </div>
+
+              <div className="pt-4 flex justify-end gap-3 mt-4 border-t border-outline-variant/60">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-sm font-bold text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-accent text-white text-sm font-bold rounded-lg shadow-sm hover:bg-accent/90 disabled:opacity-50 transition-all flex items-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <><span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> Saving...</>
+                  ) : (
+                    'Record'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

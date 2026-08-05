@@ -27,7 +27,9 @@ export type Permission =
   | 'warehouses.view'
   | 'warehouses.manage'
   | 'sidebar.movements'
-  | 'movements.view';
+  | 'movements.view'
+  | 'movements.manage'
+  | 'anomalies.resolve';
 
 type PermissionMap = Partial<Record<string, Permission[]>>;
 
@@ -43,7 +45,7 @@ const ROLE_PERMISSIONS: PermissionMap = {
     'vendors.view', 'vendors.manage',
     'purchaseOrders.view', 'purchaseOrders.manage',
     'warehouses.view', 'warehouses.manage',
-    'movements.view',
+    'movements.view', 'movements.manage',
   ],
   tenant_owner: [
     'sidebar.dashboard', 'sidebar.users', 'sidebar.inventory', 'sidebar.vendors',
@@ -56,7 +58,7 @@ const ROLE_PERMISSIONS: PermissionMap = {
     'vendors.view', 'vendors.manage',
     'purchaseOrders.view', 'purchaseOrders.manage',
     'warehouses.view', 'warehouses.manage',
-    'movements.view',
+    'movements.view', 'movements.manage',
   ],
   warehouse_manager: [
     'sidebar.dashboard', 'sidebar.inventory', 'sidebar.vendors',
@@ -68,7 +70,7 @@ const ROLE_PERMISSIONS: PermissionMap = {
     'vendors.view',
     'purchaseOrders.view',
     'warehouses.view', 'warehouses.manage',
-    'movements.view',
+    'movements.view', 'movements.manage',
   ],
   branch_manager: [
     'sidebar.dashboard', 'sidebar.inventory', 'sidebar.vendors',
@@ -108,7 +110,7 @@ const ROLE_PERMISSIONS: PermissionMap = {
     'dashboard.view',
     'inventory.view', 'inventory.manage',
     'purchaseOrders.view',
-    'movements.view',
+    'movements.view', 'movements.manage',
   ],
 };
 

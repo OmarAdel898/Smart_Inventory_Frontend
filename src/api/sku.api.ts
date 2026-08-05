@@ -1,4 +1,5 @@
-import { requestJson, requestMultipart } from './_shared';
+import { requestJson, requestMultipart, API_BASE } from './_shared';
+import { createAuthHeaders, getAccessTokenFromCookie } from '@/lib/auth';
 import type { ApiPaginatedResponse, CsvImportResult, SkuResponse } from '@/types';
 
 type SkuQueryParams = {
@@ -34,5 +35,17 @@ export const skuApi = {
     const formData = new FormData();
     formData.append('file', file);
     return requestMultipart<CsvImportResult>('/sku/import', formData);
+  },
+  exportCsv: async (): Promise<Blob> => {
+    const token = getAccessTokenFromCookie();
+    const response = await fetch(`${API_BASE}/sku/export`, {
+      headers: token ? createAuthHeaders(token) : {},
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      const message = body?.meta?.message || body?.message || body?.error || `Export failed (${response.status})`;
+      throw new Error(message);
+    }
+    return response.blob();
   },
 };

@@ -1,6 +1,7 @@
 import type { Approval, PaginationMeta } from '@/pages/ApprovalQueue/types';
 import { useAuthStore } from '@/store/authStore';
 import { getRolePermissions } from '@/config/permissions';
+import { handleUnauthorized } from '@/api/client';
 
 const BASE_URL = import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL || '';
 
@@ -17,6 +18,7 @@ function authHeaders(): Record<string, string> {
 async function handleResponse<T>(res: Response): Promise<T> {
   const json = await res.json().catch(() => null);
   if (!res.ok) {
+    if (res.status === 401) handleUnauthorized();
     const message = json?.meta?.message || json?.message || json?.error || `Request failed (${res.status})`;
     throw new Error(message);
   }

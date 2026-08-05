@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { API_BASE } from '@/api/_shared';
 import { useAuthStore } from '@/store/authStore';
 
@@ -11,6 +12,7 @@ function formatRole(role: string): string {
 
 export default function TopAppBar() {
   const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
   const roleLabel = user?.role ? formatRole(user.role) : '';
   const [avatarFailed, setAvatarFailed] = useState(false);
 
@@ -54,12 +56,16 @@ export default function TopAppBar() {
           <span className="absolute top-0 right-0 w-2 h-2 bg-destructive rounded-full" />
         </button>
         <div className="flex items-center gap-3">
-          {roleLabel && (
-            <span className="text-label-sm text-on-surface-variant uppercase tracking-wider hidden md:block">
-              {roleLabel}
-            </span>
-          )}
-          <button className="text-on-surface-variant hover:text-primary transition-opacity flex items-center gap-2">
+          <button
+            className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-opacity cursor-pointer"
+            onClick={() => navigate('/profile')}
+            title="Open profile"
+          >
+            {roleLabel && (
+              <span className="text-label-sm text-on-surface-variant uppercase tracking-wider hidden md:block">
+                {roleLabel}
+              </span>
+            )}
             <div className="w-8 h-8 rounded-full overflow-hidden border border-outline-variant bg-surface-container-lowest flex items-center justify-center shadow-sm">
               {avatarSrc && !avatarFailed ? (
                 <img
