@@ -87,6 +87,128 @@ function getReasonColor(reason: string) {
   return 'bg-surface-container text-on-surface-variant';
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+interface DashboardReportData {
+  lowStock: LowStockItem[];
+  warehouses: Warehouse[];
+  movements: StockMovement[];
+  pendingPoCount: number;
+  approvalCount: number;
+  userLabel: string;
+  generatedAt: Date;
+}
+
+function buildReportHtml(data: DashboardReportData): string {
+  const { lowStock, warehouses, movements, pendingPoCount, approvalCount, userLabel, generatedAt } = data;
+  const generated = new Intl.DateTimeFormat('en', { dateStyle: 'full', timeStyle: 'short' }).format(generatedAt);
+
+  const lowStockRows = lowStock
+    .map(
+      (item) => `<tr>
+        <td>${escapeHtml(item.skuName || '—')}</td>
+        <td>${escapeHtml(item.skuId)}</td>
+        <td>${escapeHtml(item.warehouseName || item.warehouseId)}</td>
+        <td class="num">${item.quantity}</td>
+        <td class="num">${item.reorderThreshold}</td>
+        <td class="num">${item.safetyStock ?? '—'}</td>
+      </tr>`,
+    )
+    .join('');
+
+  const movementRows = movements.length
+    ? movements
+        .map(
+          (m) => `<tr>
+          <td>${escapeHtml(formatDate(m.createdAt))}</td>
+          <td>${escapeHtml(m.skuName || m.skuId)}</td>
+          <td>${escapeHtml(m.warehouseName || m.warehouseId)}</td>
+          <td>${escapeHtml(m.reason ? m.reason.replace(/_/g, ' ') : 'MOVEMENT')}</td>
+          <td class="num ${m.quantityChange < 0 ? 'neg' : ''}">${m.quantityChange > 0 ? '+' : ''}${m.quantityChange}</td>
+        </tr>`,
+        )
+        .join('')
+    : '<tr><td colspan="5" class="empty">No recent stock movements recorded.</td></tr>';
+
+  const warehouseRows = warehouses.length
+    ? warehouses
+        .map((w) => `<tr><td>${escapeHtml(w.name)}</td><td>${escapeHtml(w.location || '—')}</td><td>${escapeHtml(w.id)}</td></tr>`)
+        .join('')
+    : '<tr><td colspan="3" class="empty">No warehouses found.</td></tr>';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>StockSavvy System Report</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; margin: 40px; line-height: 1.5; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 0 0 12px; border-bottom: 2px solid #0f766e; padding-bottom: 6px; }
+  .sub { color: #64748b; font-size: 12px; margin-bottom: 24px; }
+  .section { margin-bottom: 28px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; background: #f1f5f9; padding: 8px 10px; text-transform: uppercase; font-size: 10px; letter-spacing: 0.06em; color: #475569; border-bottom: 2px solid #cbd5e1; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .neg { color: #dc2626; }
+  .empty { text-align: center; color: #94a3b8; padding: 18px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .kpi { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; }
+  .kpi .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; }
+  .kpi .value { font-size: 26px; font-weight: 700; margin-top: 4px; }
+  .kpi .value.red { color: #dc2626; }
+  .footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; }
+  @media print { body { margin: 12mm; } .section { break-inside: avoid; } }
+</style>
+</head>
+<body>
+  <h1>StockSavvy System Report</h1>
+  <div class="sub">Generated ${escapeHtml(generated)} &middot; ${escapeHtml(userLabel)}</div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="label">Low Stock Alerts</div><div class="value red">${lowStock.length}</div></div>
+    <div class="kpi"><div class="label">Active Warehouses</div><div class="value">${warehouses.length}</div></div>
+    <div class="kpi"><div class="label">Pending POs</div><div class="value">${pendingPoCount}</div></div>
+    <div class="kpi"><div class="label">Pending Approvals</div><div class="value">${approvalCount}</div></div>
+  </div>
+
+  <div class="section">
+    <h2>Low Stock Alerts</h2>
+    <table>
+      <thead><tr><th>Product</th><th>SKU</th><th>Warehouse</th><th class="num">Qty</th><th class="num">Threshold</th><th class="num">Safety Stock</th></tr></thead>
+      <tbody>${lowStockRows}</tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>Recent Stock Movements</h2>
+    <table>
+      <thead><tr><th>Date / Time</th><th>SKU</th><th>Warehouse</th><th>Reason</th><th class="num">Qty Change</th></tr></thead>
+      <tbody>${movementRows}</tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>Warehouse Overview</h2>
+    <table>
+      <thead><tr><th>Name</th><th>Location</th><th>ID</th></tr></thead>
+      <tbody>${warehouseRows}</tbody>
+    </table>
+  </div>
+
+  <div class="footer">StockSavvy &middot; Enterprise Inventory Management &middot; ${escapeHtml(generated)}</div>
+</body>
+</html>`;
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -151,6 +273,26 @@ export default function Dashboard() {
     return () => ctrl.abort();
   }, [load]);
 
+  const handleExportReport = () => {
+    const html = buildReportHtml({
+      lowStock,
+      warehouses,
+      movements,
+      pendingPoCount,
+      approvalCount,
+      userLabel: user ? `${user.name || user.username} (${user.role.replace(/_/g, ' ')})` : 'Authenticated user',
+      generatedAt: new Date(),
+    });
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 400);
+  };
+
   if (loading) {
     return (
       <div className="h-64 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
@@ -191,6 +333,7 @@ export default function Dashboard() {
           </Button>
           <Button
             size="sm"
+            onClick={handleExportReport}
             className="gap-1.5 text-xs bg-primary text-white hover:bg-primary/90"
           >
             <FileDown className="h-3.5 w-3.5" />

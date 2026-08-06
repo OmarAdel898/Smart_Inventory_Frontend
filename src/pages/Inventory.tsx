@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
+  Download,
   Edit2,
   Filter,
   Loader2,
   Plus,
   RefreshCw,
   Search,
+  SlidersHorizontal,
   Trash2,
   Box,
   Upload,
@@ -16,6 +18,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks/useCan';
 import { skuSchema } from '@/features/inventory/validations';
+import { useCsvImport } from '@/features/inventory/hooks';
+import { CsvImportModal } from '@/features/inventory/components/CsvImportModal';
+import { ToastContainer } from '@/features/inventory/components/ToastContainer';
+import { useToast } from '@/features/inventory/hooks/useToast';
+import { skuApi } from '@/api/sku.api';
+import { ApiError } from '@/api/client';
 
 export type SkuItem = {
   id: string;
@@ -42,6 +50,13 @@ function formatCurrency(value: number): string {
 
 export default function Inventory() {
   const { can } = usePermissions();
+  const { toasts, showToast, dismissToast } = useToast();
+  const csvImport = useCsvImport({
+    showToast,
+    onSuccessfulImport: () => void loadSkus(undefined, true),
+  });
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [skus, setSkus] = useState<SkuItem[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
@@ -61,6 +76,17 @@ export default function Inventory() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Thresholds modal state
+  const [thresholdSku, setThresholdSku] = useState<SkuItem | null>(null);
+  const [stockLevels, setStockLevels] = useState<any[]>([]);
+  const [loadingStockLevels, setLoadingStockLevels] = useState(false);
+  const [savingThreshold, setSavingThreshold] = useState(false);
+  const [selectedStockLevel, setSelectedStockLevel] = useState<any | null>(null);
+  const [thresholdForm, setThresholdForm] = useState({
+    reorderThreshold: 0,
+    safetyStock: 0,
+  });
 
   // Forms
   const [skuForm, setSkuForm] = useState({
@@ -118,6 +144,7 @@ export default function Inventory() {
         setVendors(venBody?.data || (Array.isArray(venBody) ? venBody : []));
       }
     } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
       console.error('Failed to load relations', e);
     }
   };
@@ -269,6 +296,109 @@ export default function Inventory() {
     }
   };
 
+  const openThresholdModal = async (sku: SkuItem) => {
+    setThresholdSku(sku);
+    setStockLevels([]);
+    setSelectedStockLevel(null);
+    setLoadingStockLevels(true);
+
+    try {
+      const token = getToken();
+      const authHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+
+      // Fetch stock levels for this SKU
+      let res = await fetch(`${API_BASE}/stock-levels?skuId=${sku.id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+
+      if (!res.ok) throw new Error('Failed to load stock levels');
+
+      let body = await res.json();
+      let items = body.success && Array.isArray(body.data) ? body.data : Array.isArray(body.data?.items) ? body.data.items : [];
+
+      // If no stock levels exist, auto-create them by recording a zero-qty adjustment per warehouse
+      if (items.length === 0) {
+        const whRes = await fetch(`${API_BASE}/warehouses`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (whRes.ok) {
+          const whBody = await whRes.json();
+          const warehouses = whBody?.data || (Array.isArray(whBody) ? whBody : []);
+
+          for (const wh of warehouses) {
+            // A zero-quantity movement auto-creates the stock level row in the backend
+            await fetch(`${API_BASE}/inventory/stock-movements`, {
+              method: 'POST',
+              headers: authHeaders,
+              body: JSON.stringify({
+                skuId: sku.id,
+                warehouseId: wh.id,
+                quantityChange: 0,
+                reason: 'manual_adjustment',
+                note: 'Auto-initialized stock level for threshold configuration',
+              }),
+            });
+          }
+
+          // Re-fetch stock levels
+          res = await fetch(`${API_BASE}/stock-levels?skuId=${sku.id}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          });
+          if (res.ok) {
+            body = await res.json();
+            items = body.success && Array.isArray(body.data) ? body.data : Array.isArray(body.data?.items) ? body.data.items : [];
+          }
+        }
+      }
+
+      setStockLevels(items);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Error loading stock levels', 'error');
+      setStockLevels([]);
+    } finally {
+      setLoadingStockLevels(false);
+    }
+  };
+
+  const handleSaveThreshold = async () => {
+    if (!selectedStockLevel) return;
+    setSavingThreshold(true);
+    try {
+      const token = getToken();
+      const warehouseId = selectedStockLevel.warehouseId;
+      const res = await fetch(`${API_BASE}/warehouses/${warehouseId}/stock-levels/${selectedStockLevel.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          reorderThreshold: Number(thresholdForm.reorderThreshold),
+          safetyStock: Number(thresholdForm.safetyStock),
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to update thresholds');
+      }
+      
+      setStockLevels((prev) => prev.map((sl) => 
+        sl.id === selectedStockLevel.id 
+          ? { ...sl, reorderThreshold: Number(thresholdForm.reorderThreshold), safetyStock: Number(thresholdForm.safetyStock) } 
+          : sl
+      ));
+      setSelectedStockLevel(null);
+      showToast('Thresholds updated successfully', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Error updating thresholds', 'error');
+    } finally {
+      setSavingThreshold(false);
+    }
+  };
+
   const openEditModal = (sku: SkuItem) => {
     setEditingSku(sku);
     setSkuForm({
@@ -281,6 +411,38 @@ export default function Inventory() {
     });
     setFormError(null);
     setFieldErrors({});
+  };
+
+  const handleExportCsv = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const blob = await skuApi.exportCsv();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `skus-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast('SKU catalog exported successfully.', 'success');
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Failed to export SKUs.';
+      showToast(msg, 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const openImportModal = () => {
+    csvImport.resetImportModal();
+    setIsImportOpen(true);
+  };
+
+  const closeImportModal = () => {
+    setIsImportOpen(false);
+    csvImport.resetImportModal();
   };
 
   return (
@@ -307,6 +469,16 @@ export default function Inventory() {
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
+          </Button>
+          {can('inventory.manage') && (
+            <Button variant="outline" onClick={openImportModal} className="gap-2">
+              <Upload className="h-4 w-4" />
+              Import CSV
+            </Button>
+          )}
+          <Button variant="outline" onClick={handleExportCsv} disabled={isExporting || skus.length === 0} className="gap-2">
+            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {isExporting ? 'Exporting...' : 'Export CSV'}
           </Button>
           {can('inventory.manage') && (
             <Button onClick={() => {
@@ -432,6 +604,13 @@ export default function Inventory() {
                         <td className="px-6 py-4 align-top text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button
+                              onClick={() => openThresholdModal(s)}
+                              className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"
+                              title="Set Thresholds"
+                            >
+                              <SlidersHorizontal className="h-4 w-4" />
+                            </button>
+                            <button
                               onClick={() => openEditModal(s)}
                               className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"
                               title="Edit SKU"
@@ -463,7 +642,7 @@ export default function Inventory() {
       {/* CREATE / EDIT MODAL */}
       {(isCreateOpen || editingSku) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg bg-surface border border-outline-variant rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
+          <div className="w-full max-w-[500px] bg-surface border border-outline-variant rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
             <div className="flex items-center justify-between border-b border-outline-variant px-6 py-4 bg-surface-container-low">
               <h2 className="text-lg font-semibold text-on-surface flex items-center gap-2">
                 {isCreateOpen ? <Plus className="h-5 w-5 text-accent" /> : <Edit2 className="h-5 w-5 text-accent" />}
@@ -613,7 +792,7 @@ export default function Inventory() {
       {/* DELETE MODAL */}
       {deletingSku && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm bg-surface border border-outline-variant rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
+          <div className="w-full max-w-[400px] bg-surface border border-outline-variant rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
             <div className="p-6">
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
                 <AlertCircle className="h-6 w-6" />
@@ -649,6 +828,132 @@ export default function Inventory() {
           </div>
         </div>
       )}
+
+      {/* THRESHOLDS MODAL */}
+      {thresholdSku && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-[500px] bg-surface border border-outline-variant rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between border-b border-outline-variant px-6 py-4 bg-surface-container-low">
+              <h2 className="text-lg font-semibold text-on-surface flex items-center gap-2">
+                <SlidersHorizontal className="h-5 w-5 text-accent" />
+                Set Thresholds: {thresholdSku.sku}
+              </h2>
+              <button
+                onClick={() => {
+                  setThresholdSku(null);
+                  setSelectedStockLevel(null);
+                }}
+                className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 max-h-[80vh] overflow-y-auto">
+              {loadingStockLevels ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-accent" />
+                </div>
+              ) : stockLevels.length === 0 ? (
+                <p className="text-sm text-center text-on-surface-variant py-8">No stock levels found for this SKU.</p>
+              ) : (
+                <div className="space-y-4">
+                  {stockLevels.map((sl) => (
+                    <div key={sl.id} className="border border-outline-variant rounded-lg p-4 bg-surface-container-lowest">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-semibold text-on-surface">
+                          Warehouse: {sl.warehouse?.name || sl.warehouseName || sl.warehouseId.slice(0, 8)}
+                        </span>
+                        <span className="text-xs text-on-surface-variant font-mono">
+                          Qty: {sl.quantity}
+                        </span>
+                      </div>
+                      
+                      {selectedStockLevel?.id === sl.id ? (
+                        <div className="grid grid-cols-2 gap-4 mt-4 bg-surface p-3 rounded-lg border border-outline-variant/50">
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                              Reorder Threshold
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={thresholdForm.reorderThreshold}
+                              onChange={(e) => setThresholdForm({ ...thresholdForm, reorderThreshold: parseFloat(e.target.value) || 0 })}
+                              className="w-full px-3 py-1.5 text-sm bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                              Safety Stock
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={thresholdForm.safetyStock}
+                              onChange={(e) => setThresholdForm({ ...thresholdForm, safetyStock: parseFloat(e.target.value) || 0 })}
+                              className="w-full px-3 py-1.5 text-sm bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                            />
+                          </div>
+                          <div className="col-span-2 flex justify-end gap-2 mt-2">
+                            <Button size="sm" variant="outline" onClick={() => setSelectedStockLevel(null)}>
+                              Cancel
+                            </Button>
+                            <Button size="sm" onClick={handleSaveThreshold} disabled={savingThreshold} className="bg-primary text-white">
+                              {savingThreshold && <Loader2 className="h-3 w-3 animate-spin mr-2" />}
+                              Save
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between items-center mt-2">
+                          <div className="flex gap-4 text-sm text-on-surface-variant">
+                            <div>Threshold: <span className="font-medium text-on-surface">{sl.reorderThreshold}</span></div>
+                            <div>Safety: <span className="font-medium text-on-surface">{sl.safetyStock}</span></div>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => {
+                              setSelectedStockLevel(sl);
+                              setThresholdForm({
+                                reorderThreshold: sl.reorderThreshold || 0,
+                                safetyStock: sl.safetyStock || 0,
+                              });
+                            }}
+                          >
+                            Configure
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CSV IMPORT MODAL */}
+      {isImportOpen && (
+        <CsvImportModal
+          dragActive={csvImport.dragActive}
+          csvFile={csvImport.csvFile}
+          importProgress={csvImport.importProgress}
+          importResult={csvImport.importResult}
+          importErrorMsg={csvImport.importErrorMsg}
+          fileInputRef={csvImport.fileInputRef}
+          onDrag={csvImport.handleDrag}
+          onDrop={csvImport.handleDrop}
+          onFileChange={csvImport.handleFileChange}
+          onUpload={() => void csvImport.handleCsvUpload()}
+          onDownloadErrors={csvImport.downloadErrorReport}
+          onClose={closeImportModal}
+        />
+      )}
+
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

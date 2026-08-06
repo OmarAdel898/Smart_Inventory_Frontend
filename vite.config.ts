@@ -11,19 +11,5 @@ export default defineConfig({
     },
   },
   server: {
-    proxy: {
-      '/auth': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
-      '/inventory/stock-movements': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
-      '/approvals': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
-    },
   },
 })
