@@ -18,7 +18,7 @@ import Vendors from '@/pages/Vendors';
 import Approvals from '@/pages/Approvals';
 import Anomalies from '@/pages/Anomalies';
 import Negotiations from '@/pages/Negotiations';
-import Assistant from '@/pages/Assistant';
+import Assistant, { AssistantChat } from '@/pages/Assistant';
 import PurchaseOrders from '@/pages/PurchaseOrders';
 import PurchaseOrderDetail from '@/pages/PurchaseOrderDetail';
 import PurchaseOrderCreate from '@/pages/PurchaseOrderCreate';
@@ -45,6 +45,7 @@ function AppLayout() {
           <Outlet />
         </main>
       </div>
+      <AssistantChat />
     </div>
   );
 }
