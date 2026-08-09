@@ -38,14 +38,14 @@ export function SkuFormModal({
 }: SkuFormModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/60 transition-opacity">
-      <div className="bg-surface rounded-xl max-w-lg w-full border border-outline-variant shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/50">
-          <h3 className="text-lg font-semibold text-on-surface">
+      <div className="bg-white rounded-xl max-w-lg w-full border border-gray-200 shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">
             {mode === 'create' ? 'Add New SKU' : 'Edit SKU'}
           </h3>
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-surface-container rounded-lg text-on-surface-variant transition-colors"
+            className="p-1.5 hover:bg-gray-50 rounded-lg text-gray-500 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -62,7 +62,7 @@ export function SkuFormModal({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="modal-sku" className="text-xs font-semibold text-on-surface uppercase tracking-wider">
+                <label htmlFor="modal-sku" className="text-xs font-semibold text-gray-900 uppercase tracking-wider">
                   SKU Code <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -71,10 +71,10 @@ export function SkuFormModal({
                   placeholder="e.g. LAPTOP-PRO-001"
                   value={formSku}
                   onChange={(e) => setFormSku(e.target.value.toUpperCase())}
-                  className={`h-9 px-3 bg-surface rounded-lg border text-sm text-on-surface outline-none transition-all focus:ring-1 ${
+                  className={`h-9 px-3 bg-white rounded-lg border text-sm text-gray-900 outline-none transition-all focus:ring-1 ${
                     formErrors.sku
                       ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
-                      : 'border-outline-variant focus:border-accent focus:ring-accent'
+                      : 'border-gray-200 focus:border-accent focus:ring-accent'
                   }`}
                   required
                 />
@@ -82,7 +82,7 @@ export function SkuFormModal({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="modal-name" className="text-xs font-semibold text-on-surface uppercase tracking-wider">
+                <label htmlFor="modal-name" className="text-xs font-semibold text-gray-900 uppercase tracking-wider">
                   Display Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -91,10 +91,10 @@ export function SkuFormModal({
                   placeholder="e.g. Laptop Pro 15"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  className={`h-9 px-3 bg-surface rounded-lg border text-sm text-on-surface outline-none transition-all focus:ring-1 ${
+                  className={`h-9 px-3 bg-white rounded-lg border text-sm text-gray-900 outline-none transition-all focus:ring-1 ${
                     formErrors.name
                       ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
-                      : 'border-outline-variant focus:border-accent focus:ring-accent'
+                      : 'border-gray-200 focus:border-accent focus:ring-accent'
                   }`}
                   required
                 />
@@ -104,7 +104,7 @@ export function SkuFormModal({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="modal-cost" className="text-xs font-semibold text-on-surface uppercase tracking-wider">
+                <label htmlFor="modal-cost" className="text-xs font-semibold text-gray-900 uppercase tracking-wider">
                   Cost Price ($) <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -115,10 +115,10 @@ export function SkuFormModal({
                   placeholder="850.00"
                   value={formCost}
                   onChange={(e) => setFormCost(e.target.value)}
-                  className={`h-9 px-3 bg-surface rounded-lg border text-sm text-on-surface outline-none transition-all focus:ring-1 ${
+                  className={`h-9 px-3 bg-white rounded-lg border text-sm text-gray-900 outline-none transition-all focus:ring-1 ${
                     formErrors.cost
                       ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
-                      : 'border-outline-variant focus:border-accent focus:ring-accent'
+                      : 'border-gray-200 focus:border-accent focus:ring-accent'
                   }`}
                   required
                 />
@@ -126,7 +126,7 @@ export function SkuFormModal({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="modal-price" className="text-xs font-semibold text-on-surface uppercase tracking-wider">
+                <label htmlFor="modal-price" className="text-xs font-semibold text-gray-900 uppercase tracking-wider">
                   Selling Price ($) <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -137,10 +137,10 @@ export function SkuFormModal({
                   placeholder="1299.99"
                   value={formPrice}
                   onChange={(e) => setFormPrice(e.target.value)}
-                  className={`h-9 px-3 bg-surface rounded-lg border text-sm text-on-surface outline-none transition-all focus:ring-1 ${
+                  className={`h-9 px-3 bg-white rounded-lg border text-sm text-gray-900 outline-none transition-all focus:ring-1 ${
                     formErrors.price
                       ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
-                      : 'border-outline-variant focus:border-accent focus:ring-accent'
+                      : 'border-gray-200 focus:border-accent focus:ring-accent'
                   }`}
                   required
                 />
@@ -150,14 +150,14 @@ export function SkuFormModal({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="modal-category" className="text-xs font-semibold text-on-surface uppercase tracking-wider">
+                <label htmlFor="modal-category" className="text-xs font-semibold text-gray-900 uppercase tracking-wider">
                   Category
                 </label>
                 <select
                   id="modal-category"
                   value={formCategoryId}
                   onChange={(e) => setFormCategoryId(e.target.value)}
-                  className="h-9 px-3 bg-surface rounded-lg border border-outline-variant text-sm text-on-surface outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                  className="h-9 px-3 bg-white rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                 >
                   <option value="">No Category</option>
                   {categories.map((cat) => (
@@ -167,14 +167,14 @@ export function SkuFormModal({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="modal-vendor" className="text-xs font-semibold text-on-surface uppercase tracking-wider">
+                <label htmlFor="modal-vendor" className="text-xs font-semibold text-gray-900 uppercase tracking-wider">
                   Preferred Vendor
                 </label>
                 <select
                   id="modal-vendor"
                   value={formVendorId}
                   onChange={(e) => setFormVendorId(e.target.value)}
-                  className="h-9 px-3 bg-surface rounded-lg border border-outline-variant text-sm text-on-surface outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                  className="h-9 px-3 bg-white rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                 >
                   <option value="">No Preferred Vendor</option>
                   {vendors.map((v) => (
@@ -185,10 +185,10 @@ export function SkuFormModal({
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 px-6 py-4 bg-surface-container-low border-t border-outline-variant/50">
-            <Button type="button" variant="outline" onClick={onClose}>
+          <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50-low border-t border-gray-200">
+            <button type="button" variant="cancel" onClick={onClose} className="px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-all">
               Cancel
-            </Button>
+            </button>
             <Button type="submit" disabled={formSubmitLoading}>
               {formSubmitLoading ? (
                 <>

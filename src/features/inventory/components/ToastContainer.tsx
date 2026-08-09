@@ -12,7 +12,7 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
       {toasts.map((t) => (
         <div
           key={t.id}
-          className={`flex items-start gap-3 p-4 rounded-lg shadow-lg border text-sm pointer-events-auto transition-all duration-300 animate-in fade-in slide-in-from-top-4 ${
+          className={`flex items-start gap-3 p-4 rounded-lg shadow-sm border text-sm pointer-events-auto transition-all duration-300 animate-in fade-in slide-in-from-top-4 ${
             t.type === 'success'
               ? 'bg-green-50 border-green-200 text-green-800'
               : t.type === 'error'
@@ -30,7 +30,7 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
           <div className="flex-1 font-medium">{t.message}</div>
           <button
             onClick={() => onDismiss(t.id)}
-            className="text-on-surface-variant hover:text-on-surface hover:opacity-100 transition-opacity"
+            className="text-gray-500 hover:text-gray-900 hover:opacity-100 transition-opacity"
           >
             <X className="h-4 w-4" />
           </button>

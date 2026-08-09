@@ -34,21 +34,21 @@ export function SkuTable({
 
   return (
     <>
-      <Card className="overflow-hidden border-outline-variant/60 shadow-sm">
-        <CardHeader className="border-b border-outline-variant/50 bg-surface">
-          <CardTitle className="text-xl text-on-surface">SKU Directory</CardTitle>
+      <Card className="overflow-hidden border-gray-200 shadow-sm">
+        <CardHeader className="border-b border-gray-200 bg-white">
+          <CardTitle className="text-xl text-gray-900">SKU Directory</CardTitle>
           <CardDescription>
             Catalog of stock keeping units with cost settings and vendor alignments.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {skuLoading ? (
-            <div className="py-20 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-              <Loader2 className="h-8 w-8 animate-spin text-accent" />
+            <div className="py-20 flex flex-col items-center justify-center gap-3 text-gray-500">
+              <Loader2 className="h-8 w-8 animate-spin text-[#0066CC]" />
               <p className="text-sm font-medium">Loading SKU catalog...</p>
             </div>
           ) : skuError ? (
-            <div className="py-20 flex flex-col items-center justify-center gap-4 text-on-surface-variant">
+            <div className="py-20 flex flex-col items-center justify-center gap-4 text-gray-500">
               <AlertCircle className="h-8 w-8 text-red-500" />
               <p className="text-sm font-medium">Unable to load catalog: {skuError}</p>
               <Button variant="outline" onClick={onRetry} className="gap-2">
@@ -56,19 +56,19 @@ export function SkuTable({
               </Button>
             </div>
           ) : skus.length === 0 ? (
-            <div className="py-20 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-              <AlertCircle className="h-8 w-8 text-accent" />
-              <p className="text-sm font-medium text-on-surface">No SKUs found</p>
+            <div className="py-20 flex flex-col items-center justify-center gap-3 text-gray-500">
+              <AlertCircle className="h-8 w-8 text-[#0066CC]" />
+              <p className="text-sm font-medium text-gray-900">No SKUs found</p>
               <p className="text-xs">Try adjusting your filters or search terms or add a new SKU.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full border-separate border-spacing-0">
                 <thead>
-                  <tr className="bg-surface-container/70 border-b border-outline-variant">
+                  <tr className="bg-gray-50 border-b border-gray-200">
                     <th
                       onClick={() => onSort('sku')}
-                      className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant cursor-pointer hover:bg-surface-container transition-colors"
+                      className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 cursor-pointer hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center gap-1.5">
                         SKU Code
@@ -79,7 +79,7 @@ export function SkuTable({
                     </th>
                     <th
                       onClick={() => onSort('name')}
-                      className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant cursor-pointer hover:bg-surface-container transition-colors"
+                      className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 cursor-pointer hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center gap-1.5">
                         Display Name
@@ -88,80 +88,80 @@ export function SkuTable({
                         )}
                       </div>
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                       Category
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                       Cost Price
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                       Selling Price
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                       Preferred Vendor
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-surface">
+                <tbody className="bg-white">
                   {skus.map((item, index) => (
                     <tr
                       key={item.id}
-                      className={`border-t border-outline-variant/40 transition-colors hover:bg-surface-container/30 ${
-                        index % 2 === 0 ? 'bg-surface' : 'bg-surface-lowest'
+                      className={`border-t border-gray-200 transition-colors hover:bg-gray-50 ${
+                        index % 2 === 0 ? 'bg-white' : 'bg-white'
                       }`}
                     >
-                      <td className="px-6 py-4 align-middle font-mono text-xs font-medium text-on-surface">
+                      <td className="px-6 py-4 align-middle font-mono text-xs font-medium text-gray-900">
                         <div className="flex items-center gap-2">
                           <span>{item.sku}</span>
                           <button
                             onClick={() => onCopy(item.sku)}
-                            className="text-on-surface-variant/40 hover:text-on-surface p-0.5 hover:bg-surface-container rounded transition-colors"
+                            className="text-gray-500/40 hover:text-gray-900 p-0.5 hover:bg-gray-50 rounded transition-colors"
                             title="Copy SKU code"
                           >
                             <Copy className="h-3 w-3" />
                           </button>
                         </div>
                       </td>
-                      <td className="px-6 py-4 align-middle text-sm font-semibold text-on-surface">
+                      <td className="px-6 py-4 align-middle text-sm font-semibold text-gray-900">
                         {item.name}
                       </td>
-                      <td className="px-6 py-4 align-middle text-sm text-on-surface-variant">
+                      <td className="px-6 py-4 align-middle text-sm text-gray-500">
                         {item.categoryId ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary-container/30 text-on-secondary-container border border-secondary-container/50">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100/30 text-on-secondary-container border border-secondary-container/50">
                             {categoryMap.get(item.categoryId) || 'Loading...'}
                           </span>
                         ) : (
-                          <span className="text-on-surface-variant/40">—</span>
+                          <span className="text-gray-500/40">—</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 align-middle text-right text-sm text-on-surface font-mono">
+                      <td className="px-6 py-4 align-middle text-right text-sm text-gray-900 font-mono">
                         ${item.cost.toFixed(2)}
                       </td>
-                      <td className="px-6 py-4 align-middle text-right text-sm text-on-surface font-mono">
+                      <td className="px-6 py-4 align-middle text-right text-sm text-gray-900 font-mono">
                         ${item.price.toFixed(2)}
                       </td>
-                      <td className="px-6 py-4 align-middle text-sm text-on-surface-variant">
+                      <td className="px-6 py-4 align-middle text-sm text-gray-500">
                         {item.preferredVendorId ? (
                           vendorMap.get(item.preferredVendorId) || 'Loading...'
                         ) : (
-                          <span className="text-on-surface-variant/40">—</span>
+                          <span className="text-gray-500/40">—</span>
                         )}
                       </td>
                       <td className="px-6 py-4 align-middle text-right text-sm">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => onEdit(item)}
-                            className="p-1 hover:bg-surface-container hover:text-primary rounded text-on-surface-variant/80 transition-colors"
+                            className="p-1 hover:bg-gray-50 hover:text-[#0066CC] rounded text-gray-500/80 transition-colors"
                             title="Edit SKU"
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => onDelete(item)}
-                            className="p-1 hover:bg-red-50 hover:text-red-600 rounded text-on-surface-variant/80 transition-colors"
+                            className="p-1 hover:bg-red-50 hover:text-red-600 rounded text-gray-500/80 transition-colors"
                             title="Delete SKU"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -178,10 +178,10 @@ export function SkuTable({
       </Card>
 
       {skuMeta && skuMeta.totalPages > 1 && (
-        <div className="flex items-center justify-between border-t border-outline-variant/40 pt-4 px-2">
-          <span className="text-xs text-on-surface-variant">
-            Showing page <strong className="text-on-surface font-medium">{skuMeta.page}</strong> of{' '}
-            <strong className="text-on-surface font-medium">{skuMeta.totalPages}</strong> ({skuMeta.total} items)
+        <div className="flex items-center justify-between border-t border-gray-200 pt-4 px-2">
+          <span className="text-xs text-gray-500">
+            Showing page <strong className="text-gray-900 font-medium">{skuMeta.page}</strong> of{' '}
+            <strong className="text-gray-900 font-medium">{skuMeta.totalPages}</strong> ({skuMeta.total} items)
           </span>
           <div className="flex items-center gap-2">
             <Button
