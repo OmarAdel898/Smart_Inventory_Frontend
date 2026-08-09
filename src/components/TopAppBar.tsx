@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { API_BASE } from '@/api/_shared';
 import { useAuthStore } from '@/store/authStore';
+import NotificationBell from '@/components/NotificationBell';
 import {
-  Bell,
   BookOpen,
   Sun,
   Moon,
@@ -83,11 +83,7 @@ export default function TopAppBar() {
       <div className="flex items-center gap-6 h-full">
         {/* Actions */}
         <div className="flex items-center gap-5">
-
-          <button className="text-[#6C5CE7] hover:opacity-80 transition-opacity relative">
-            <Bell className="w-[22px] h-[22px]" fill="currentColor" strokeWidth={0} />
-            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-[#6C5CE7] border-[2px] border-white rounded-full" />
-          </button>
+          <NotificationBell />
         </div>
 
         {/* Divider */}
