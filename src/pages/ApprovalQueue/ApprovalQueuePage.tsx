@@ -46,23 +46,25 @@ export default function ApprovalQueuePage() {
     <div className="h-full">
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
 
-      <FilterBar
-        filters={localFilters}
-        onChange={setLocalFilters}
-        onApply={handleApply}
-      />
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+        <FilterBar
+          filters={localFilters}
+          onChange={setLocalFilters}
+          onApply={handleApply}
+        />
 
-      <ApprovalsTable
-        approvals={approvals}
-        loading={loading}
-        total={total}
-        page={page}
-        limit={limit}
-        onRowClick={handleRowClick}
-        onPrevPage={prevPage}
-        onNextPage={nextPage}
-        hasNext={hasNext}
-      />
+        <ApprovalsTable
+          approvals={approvals}
+          loading={loading}
+          total={total}
+          page={page}
+          limit={limit}
+          onRowClick={handleRowClick}
+          onPrevPage={prevPage}
+          onNextPage={nextPage}
+          hasNext={hasNext}
+        />
+      </div>
 
       <ApprovalSideSheet
         isOpen={sideSheetOpen}

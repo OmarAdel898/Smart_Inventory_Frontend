@@ -83,57 +83,57 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
         />
       )}
       <div
-        className={`fixed top-0 right-0 h-screen w-full md:w-[600px] bg-surface-lowest z-[70] shadow-2xl flex flex-col side-sheet-transition ${
+        className={`fixed top-0 right-0 h-screen w-full md:w-[600px] bg-white z-[70] shadow-2xl flex flex-col side-sheet-transition ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        <div className="p-6 border-b border-outline-variant flex items-center justify-between shrink-0">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between shrink-0">
           <div>
-            <h3 className="text-headline-sm font-semibold text-on-surface">Approval Detail</h3>
-            <p className="text-body-sm text-on-surface-variant">
+            <h3 className="text-headline-sm font-semibold text-gray-900">Approval Detail</h3>
+            <p className="text-body-sm text-gray-500">
               {approval
                 ? `${formatRequestId(approval.id)} \u2022 ${formatAgentType(approval.agentType)} Agent`
                 : '\u00A0'}
             </p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-surface-container-low rounded-full transition-colors">
+          <button onClick={onClose} className="p-2 hover:bg-gray-50-low rounded-full transition-colors">
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
         {!approval ? (
-          <div className="flex-1 flex items-center justify-center text-on-surface-variant text-body-md">
+          <div className="flex-1 flex items-center justify-center text-gray-500 text-body-md">
             Select an approval to view details
           </div>
         ) : (
           <>
             <div className="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-8">
               {error && (
-                <div className="bg-error-container text-on-error-container px-4 py-3 rounded-lg text-body-sm">
+                <div className="bg-red-50 text-white-container px-4 py-3 rounded-lg text-body-sm">
                   {error}
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-surface border border-outline-variant rounded-lg">
-                  <p className="text-label-md text-on-surface-variant uppercase mb-1">Proposed Value</p>
+                <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                  <p className="text-label-md text-gray-500 uppercase mb-1">Proposed Value</p>
                   <p className="text-headline-sm font-semibold">
                     ${proposedValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
-                <div className="p-4 bg-surface border border-outline-variant rounded-lg">
-                  <p className="text-label-md text-on-surface-variant uppercase mb-1">Confidence Score</p>
+                <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                  <p className="text-label-md text-gray-500 uppercase mb-1">Confidence Score</p>
                   <p className="text-headline-sm font-semibold text-green-600">{confidenceScore}%</p>
                 </div>
               </div>
 
               <section>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="material-symbols-outlined text-secondary">smart_toy</span>
-                  <h4 className="text-headline-sm font-semibold text-on-surface">AI Reasoning</h4>
+                  <span className="material-symbols-outlined text-gray-700">smart_toy</span>
+                  <h4 className="text-headline-sm font-semibold text-gray-900">AI Reasoning</h4>
                 </div>
-                <div className="bg-secondary-container/5 border-l-4 border-secondary p-4 rounded-r-lg">
-                  <p className="text-body-md text-on-surface leading-relaxed italic">
+                <div className="bg-gray-100/5 border-l-4 border-secondary p-4 rounded-r-lg">
+                  <p className="text-body-md text-gray-900 leading-relaxed italic">
                     {approval.reasoning || 'No reasoning provided.'}
                   </p>
                 </div>
@@ -141,12 +141,12 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
 
               <section>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-headline-sm font-semibold text-on-surface">Request Payload</h4>
-                  <button onClick={handleCopy} className="text-secondary text-label-lg uppercase tracking-wide hover:underline">
+                  <h4 className="text-headline-sm font-semibold text-gray-900">Request Payload</h4>
+                  <button onClick={handleCopy} className="text-gray-700 text-label-lg uppercase tracking-wide hover:underline">
                     {copied ? 'Copied' : 'Copy JSON'}
                   </button>
                 </div>
-                <div className="bg-primary text-secondary-fixed-dim font-mono-data text-[13px] p-4 rounded-lg overflow-x-auto leading-relaxed border border-primary-container shadow-inner">
+                <div className="bg-[#0066CC] text-gray-700-fixed-dim font-mono-data text-[13px] p-4 rounded-lg overflow-x-auto leading-relaxed border border-primary-container shadow-inner">
                   <pre className="whitespace-pre-wrap">{JSON.stringify(approval.payload, null, 2)}</pre>
                 </div>
               </section>
@@ -154,7 +154,7 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
               <section>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <h4 className="text-headline-sm font-semibold text-on-surface">Approval Comments / Payload Edit</h4>
+                    <h4 className="text-headline-sm font-semibold text-gray-900">Approval Comments / Payload Edit</h4>
                     {!canEditPayload && (
                       <span className="material-symbols-outlined text-[18px] text-outline">lock</span>
                     )}
@@ -164,27 +164,27 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
                   <textarea
                     value={editedPayloadRaw}
                     onChange={(e) => setEditedPayloadRaw(e.target.value)}
-                    className="w-full h-32 bg-surface-container-low border border-outline-variant rounded-lg p-4 text-body-md focus:ring-secondary focus:border-secondary transition-all resize-none font-mono-data text-[13px]"
+                    className="w-full h-32 bg-gray-50-low border border-gray-200 rounded-lg p-4 text-body-md focus:ring-secondary focus:border-secondary transition-all resize-none font-mono-data text-[13px]"
                     placeholder='Optional: Enter JSON to merge into the payload, e.g. {"priority": "HIGH"}'
                   />
                 ) : (
-                  <div className="w-full h-32 bg-surface-container-lowest border border-outline-variant rounded-lg p-4 font-mono-data text-[13px] text-on-surface/70 overflow-y-auto">
+                  <div className="w-full h-32 bg-gray-50/50 border border-gray-200 rounded-lg p-4 font-mono-data text-[13px] text-gray-900/70 overflow-y-auto">
                     <pre className="whitespace-pre-wrap">{JSON.stringify(approval.payload, null, 2)}</pre>
                   </div>
                 )}
-                <p className="text-[11px] text-on-surface-variant mt-2 italic">
+                <p className="text-[11px] text-gray-500 mt-2 italic">
                   Submitting with edits will re-run agent validation before execution.
                 </p>
               </section>
             </div>
 
             {canApprove || canReject ? (
-              <div className="p-6 border-t border-outline-variant bg-surface-container-low flex gap-4 shrink-0">
+              <div className="p-6 border-t border-gray-200 bg-gray-50-low flex gap-4 shrink-0">
                 {canReject && (
                   <button
                     onClick={handleReject}
                     disabled={rejecting || approving}
-                    className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors shadow-lg shadow-red-500/10 flex items-center justify-center gap-2 active:scale-95 duration-200 disabled:opacity-60"
+                    className="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors shadow-sm shadow-red-500/10 flex items-center justify-center gap-2 active:scale-95 duration-200 disabled:opacity-60"
                   >
                     {rejecting ? (
                       <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
@@ -198,7 +198,7 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
                   <button
                     onClick={handleApprove}
                     disabled={approving || rejecting}
-                    className="flex-1 px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors shadow-lg shadow-green-500/10 flex items-center justify-center gap-2 active:scale-95 duration-200 disabled:opacity-60"
+                    className="flex-1 px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors shadow-sm shadow-green-500/10 flex items-center justify-center gap-2 active:scale-95 duration-200 disabled:opacity-60"
                   >
                     {approving ? (
                       <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />

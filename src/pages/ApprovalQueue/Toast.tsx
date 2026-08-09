@@ -19,7 +19,7 @@ export default function Toast({ message, onDismiss }: ToastProps) {
 
   return (
     <div
-      className={`fixed top-4 right-4 z-[100] bg-destructive text-on-error px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 overlay-bg ${
+      className={`fixed top-4 right-4 z-[100] bg-destructive text-white px-4 py-3 rounded-lg shadow-sm flex items-center gap-3 overlay-bg ${
         visible ? 'opacity-100' : 'opacity-0'
       }`}
     >

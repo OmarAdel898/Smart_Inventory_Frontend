@@ -1,5 +1,6 @@
 import type { Approval } from '@/pages/ApprovalQueue/types';
 import { formatAgentType, formatStep, formatStatus, formatRequestId, formatDate } from '@/pages/ApprovalQueue/types';
+import { Eye } from 'lucide-react';
 import { usePermissions } from '@/hooks/useCan';
 
 interface ApprovalRowProps {
@@ -13,12 +14,12 @@ const iconMap: Record<string, string> = {
 };
 
 const agentIconBg: Record<string, string> = {
-  reorder: 'bg-tertiary-fixed/30 text-on-tertiary-fixed-variant',
-  negotiation: 'bg-secondary-container/10 text-secondary',
+  reorder: 'bg-blue-50/30 text-blue-700',
+  negotiation: 'bg-gray-100/10 text-gray-700',
 };
 
 const statusStyles: Record<string, string> = {
-  pending: 'bg-orange-100 text-orange-700 border-orange-200',
+  pending: 'bg-amber-100 text-amber-800 border-amber-200',
   approved: 'bg-green-100 text-green-700 border-green-200',
   rejected: 'bg-red-100 text-red-700 border-red-200',
 };
@@ -29,44 +30,47 @@ export default function ApprovalRow({ approval, onClick }: ApprovalRowProps) {
 
   return (
     <tr
-      className="hover:bg-surface-container-low transition-colors cursor-pointer group"
+      className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer group"
       onClick={onClick}
     >
-      <td className="px-6 py-4 font-mono-data text-[13px] text-secondary font-medium">
-        {formatRequestId(approval.id)}
+      <td className="px-6 py-4 align-middle">
+        <span className="text-[13px] font-bold text-[#0066CC] group-hover:underline">{formatRequestId(approval.id)}</span>
       </td>
-      <td className="px-6 py-4">
+      <td className="px-6 py-4 align-middle">
         <div className="flex items-center gap-2">
-          <span className={`material-symbols-outlined p-1 rounded ${agentIconBg[approval.agentType] || ''}`}>
+          <span className={`material-symbols-outlined p-1 rounded text-[16px] ${agentIconBg[approval.agentType] || ''}`}>
             {iconMap[approval.agentType] || 'inventory'}
           </span>
-          <span className="text-body-md">{formatAgentType(approval.agentType)}</span>
+          <span className="text-[13px] font-medium text-gray-900">{formatAgentType(approval.agentType)}</span>
         </div>
       </td>
-      <td className="px-6 py-4">
-        <span className="text-body-sm text-on-surface-variant">{formatStep(approval.agentType, approval.stepNumber)}</span>
+      <td className="px-6 py-4 align-middle">
+        <span className="text-[13px] font-medium text-gray-500">{formatStep(approval.agentType, approval.stepNumber)}</span>
       </td>
-      <td className="px-6 py-4">
-        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${statusStyles[approval.status] || ''}`}>
+      <td className="px-6 py-4 align-middle">
+        <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${statusStyles[approval.status] || ''}`}>
           {formatStatus(approval.status)}
         </span>
       </td>
-      <td className="px-6 py-4 font-mono-data text-[13px] text-on-surface-variant">{formatDate(approval.createdAt)}</td>
-      <td className="px-6 py-4 text-right">
+      <td className="px-6 py-4 align-middle text-[13px] font-medium text-gray-500 font-mono">{formatDate(approval.createdAt)}</td>
+      <td className="px-6 py-4 align-middle text-right">
         {approval.status === 'pending' && canReview ? (
           <button
             onClick={(e) => { e.stopPropagation(); onClick(); }}
-            className="px-4 py-1.5 text-body-sm font-bold bg-primary text-white rounded hover:bg-primary-container transition-all active:scale-95 shadow-sm"
+            className="px-4 py-1.5 text-[13px] font-bold rounded-full text-[#0066CC] bg-[#E6F4FF] hover:bg-[#D0E9FF] shadow-sm transition-all"
           >
             Review
           </button>
         ) : (
-          <button
-            onClick={(e) => { e.stopPropagation(); onClick(); }}
-            className="p-2 text-on-surface-variant hover:bg-surface-container-high rounded transition-colors"
-          >
-            <span className="material-symbols-outlined">visibility</span>
-          </button>
+          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={(e) => { e.stopPropagation(); onClick(); }}
+              className="p-1.5 rounded-full font-bold text-gray-400 hover:bg-[#E6F4FF] hover:text-[#0066CC] transition-colors"
+              title="View"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+          </div>
         )}
       </td>
     </tr>

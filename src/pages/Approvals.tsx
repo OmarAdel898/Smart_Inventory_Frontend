@@ -8,8 +8,8 @@ export default function Approvals() {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center px-4">
         <span className="material-symbols-outlined text-[64px] text-outline mb-4">lock</span>
-        <h2 className="text-headline-md font-semibold text-on-surface mb-2">Access Denied</h2>
-        <p className="text-body-md text-on-surface-variant max-w-sm">
+        <h2 className="text-headline-md font-semibold text-gray-900 mb-2">Access Denied</h2>
+        <p className="text-body-md text-gray-500 max-w-sm">
           You do not have permission to view the Approvals page. Contact your administrator.
         </p>
       </div>
