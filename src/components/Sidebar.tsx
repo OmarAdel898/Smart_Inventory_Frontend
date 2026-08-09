@@ -15,6 +15,7 @@ import {
   FileText,
   AlertOctagon,
   Bot,
+  Bell,
   LogOut,
   Menu,
   MoreVertical,
@@ -24,6 +25,7 @@ import {
 
 const overviewLinks = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, perm: 'sidebar.dashboard' as const },
+  { to: '/notifications', label: 'Notifications', icon: Bell, perm: 'sidebar.notifications' as const },
   { to: '/inventory', label: 'Inventory', icon: Package, perm: 'sidebar.inventory' as const },
   { to: '/categories', label: 'Categories', icon: Tags, perm: 'sidebar.inventory' as const },
   { to: '/warehouses', label: 'Warehouses', icon: Building2, perm: 'sidebar.warehouses' as const },

@@ -11,6 +11,7 @@ import BranchDashboard from '@/pages/BranchDashboard';
 import Profile from '@/pages/Profile';
 import { useAuthStore } from '@/store/authStore';
 import { getAccessTokenFromCookie, getWarehouseIdFromToken } from '@/lib/auth';
+import NotificationProvider from '@/components/NotificationProvider';
 import Inventory from '@/pages/Inventory';
 import Warehouses from '@/pages/Warehouses';
 import WarehouseCreate from '@/pages/WarehouseCreate';
@@ -27,6 +28,7 @@ import StockMovements from '@/pages/StockMovements';
 import Categories from '@/pages/Categories';
 import CategoryCreate from '@/pages/CategoryCreate';
 import Onboarding from '@/pages/Onboarding';
+import Notifications from '@/pages/Notifications';
 
 function AppLayout() {
   const user = useAuthStore((s) => s.user);
@@ -37,16 +39,18 @@ function AppLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <TopAppBar />
-        <main className="flex-1 overflow-y-auto p-8">
-          <Outlet />
-        </main>
+    <NotificationProvider>
+      <div className="flex h-screen bg-background">
+        <Sidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <TopAppBar />
+          <main className="flex-1 overflow-y-auto p-8">
+            <Outlet />
+          </main>
+        </div>
+        <AssistantChat />
       </div>
-      <AssistantChat />
-    </div>
+    </NotificationProvider>
   );
 }
 
@@ -121,6 +125,10 @@ export default function App() {
           
           <Route element={<RequirePermission permission="sidebar.assistant" />}>
             <Route path="assistant" element={<Assistant />} />
+          </Route>
+
+          <Route element={<RequirePermission permission="sidebar.notifications" />}>
+            <Route path="notifications" element={<Notifications />} />
           </Route>
         </Route>
       </Route>
