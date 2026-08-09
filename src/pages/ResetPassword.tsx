@@ -10,7 +10,7 @@ function FormField({ id, type, placeholder, label, value, onChange, error, requi
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium text-on-surface">{label}</label>
+      <label htmlFor={id} className="text-sm font-medium text-gray-900">{label}</label>
       <input
         id={id}
         type={type}
@@ -18,10 +18,10 @@ function FormField({ id, type, placeholder, label, value, onChange, error, requi
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
-        className={`w-full h-10 px-3 bg-surface-container rounded-lg border text-sm text-on-surface outline-none transition-all placeholder:text-on-surface-variant/50 focus:ring-1 ${
+        className={`w-full h-10 px-3 bg-gray-50 rounded-lg border text-sm text-gray-900 outline-none transition-all placeholder:text-gray-500/50 focus:ring-1 ${
           error
             ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
-            : 'border-outline-variant focus:border-accent focus:ring-accent'
+            : 'border-gray-200 focus:border-accent focus:ring-accent'
         }`}
       />
       {error && <p className="text-xs text-red-500">{error}</p>}
@@ -85,7 +85,7 @@ export default function ResetPassword() {
     <div className="flex min-h-screen">
       <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-navy to-accent p-8 flex-col justify-between relative overflow-hidden">
         <div className="absolute -top-20 -right-20 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 w-[500px] h-[500px] bg-secondary-fixed/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 w-[500px] h-[500px] bg-gray-200/10 rounded-full blur-3xl" />
         <div className="relative z-10 flex flex-col justify-between h-full">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-lg flex items-center justify-center text-white border border-white/20">
@@ -101,11 +101,11 @@ export default function ResetPassword() {
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-8 bg-surface">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-8 bg-white">
         <div className="w-full max-w-md">
           <div className="mb-6">
-            <h2 className="text-2xl font-semibold text-on-surface mb-1">Reset Password</h2>
-            <p className="text-sm text-on-surface-variant">Please enter your new password below.</p>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-1">Reset Password</h2>
+            <p className="text-sm text-gray-500">Please enter your new password below.</p>
           </div>
 
           {error && (

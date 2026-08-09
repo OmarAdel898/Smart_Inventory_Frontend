@@ -175,21 +175,21 @@ export default function PurchaseOrderDetail() {
 
   if (loading) {
     return (
-      <div className="py-16 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-        <Loader2 className="h-6 w-6 animate-spin text-accent" />
-        <p className="font-medium text-on-surface">Loading purchase order details...</p>
+      <div className="py-16 flex flex-col items-center justify-center gap-3 text-gray-500">
+        <Loader2 className="h-6 w-6 animate-spin text-[#0066CC]" />
+        <p className="font-medium text-gray-900">Loading purchase order details...</p>
       </div>
     );
   }
 
   if (error || !order) {
     return (
-      <div className="py-16 flex flex-col items-center justify-center gap-4 text-on-surface-variant">
+      <div className="py-16 flex flex-col items-center justify-center gap-4 text-gray-500">
         <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center border border-red-200">
           <AlertCircle className="h-5 w-5 text-red-600" />
         </div>
         <div className="text-center max-w-md">
-          <p className="font-medium text-on-surface">Unable to load purchase order</p>
+          <p className="font-medium text-gray-900">Unable to load purchase order</p>
           <p className="text-sm">{error || 'Purchase order not found'}</p>
         </div>
         <Button variant="outline" onClick={() => navigate('/purchase-orders')} className="gap-2">
@@ -210,12 +210,12 @@ export default function PurchaseOrderDetail() {
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Breadcrumbs */}
-      <div className="flex items-center gap-2 text-xs text-on-surface-variant">
-        <button onClick={() => navigate('/purchase-orders')} className="hover:text-accent transition-colors">
+      <div className="flex items-center gap-2 text-xs text-gray-500">
+        <button onClick={() => navigate('/purchase-orders')} className="hover:text-[#0066CC] transition-colors">
           Purchase Orders
         </button>
         <ChevronRight className="h-3.5 w-3.5" />
-        <span className="font-mono font-semibold text-on-surface">{order.id}</span>
+        <span className="font-mono font-semibold text-gray-900">{order.id}</span>
       </div>
 
       {/* Header Info */}
@@ -231,7 +231,7 @@ export default function PurchaseOrderDetail() {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold font-mono tracking-tight text-on-surface">
+              <h1 className="text-2xl font-bold font-mono tracking-tight text-gray-900">
                 PO: {order.id.slice(0, 8)}
               </h1>
               <span
@@ -241,8 +241,8 @@ export default function PurchaseOrderDetail() {
                 {style.label}
               </span>
             </div>
-            <p className="mt-1 text-xs text-on-surface-variant">
-              Vendor ID: <span className="font-mono text-on-surface font-semibold">{order.vendorId}</span>
+            <p className="mt-1 text-xs text-gray-500">
+              Vendor ID: <span className="font-mono text-gray-900 font-semibold">{order.vendorId}</span>
               <span className="mx-2">•</span>
               Created: {formatDate(order.createdAt)}
             </p>
@@ -258,7 +258,7 @@ export default function PurchaseOrderDetail() {
       </div>
 
       {/* Workflow Stepper */}
-      <Card className="border-outline-variant/60 shadow-sm p-4 bg-surface-container-lowest">
+      <Card className="border-gray-200 shadow-sm p-4 bg-gray-50/50">
         <div className="flex items-center justify-between">
           {STATUS_STEPS.map((step, idx) => {
             const isCompleted = currentStepIndex > idx && !isRejected;
@@ -272,15 +272,15 @@ export default function PurchaseOrderDetail() {
                       isCompleted
                         ? 'bg-emerald-500 text-white'
                         : isCurrent
-                        ? 'bg-accent text-white ring-4 ring-accent/20'
-                        : 'bg-surface-container-high text-on-surface-variant'
+                        ? 'bg-[#E6F4FF] text-[#0066CC] hover:bg-[#D0E9FF] ring-4 ring-accent/20'
+                        : 'bg-gray-100 text-gray-500'
                     }`}
                   >
                     {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : idx + 1}
                   </div>
                   <span
                     className={`text-xs font-semibold hidden sm:inline ${
-                      isCurrent ? 'text-accent' : isCompleted ? 'text-emerald-700' : 'text-on-surface-variant'
+                      isCurrent ? 'text-[#0066CC]' : isCompleted ? 'text-emerald-700' : 'text-gray-500'
                     }`}
                   >
                     {step.label}
@@ -289,7 +289,7 @@ export default function PurchaseOrderDetail() {
                 {idx < STATUS_STEPS.length - 1 && (
                   <div
                     className={`flex-1 h-1 mx-3 rounded-full ${
-                      currentStepIndex > idx && !isRejected ? 'bg-emerald-500' : 'bg-surface-container-high'
+                      currentStepIndex > idx && !isRejected ? 'bg-emerald-500' : 'bg-gray-100'
                     }`}
                   />
                 )}
@@ -316,9 +316,9 @@ export default function PurchaseOrderDetail() {
 
       {/* Status Transition Action Buttons Bar */}
       {availableTransitions.length > 0 && (
-        <Card className="border-outline-variant/60 shadow-sm bg-surface">
-          <CardHeader className="border-b border-outline-variant/40 py-3">
-            <CardTitle className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant">
+        <Card className="border-gray-200 shadow-sm bg-white">
+          <CardHeader className="border-b border-gray-200 py-3">
+            <CardTitle className="text-xs uppercase tracking-wider font-semibold text-gray-500">
               Workflow Status Actions
             </CardTitle>
           </CardHeader>
@@ -347,14 +347,14 @@ export default function PurchaseOrderDetail() {
       )}
 
       {/* Line Items Table */}
-      <Card className="border-outline-variant/60 shadow-sm overflow-hidden">
-        <CardHeader className="border-b border-outline-variant/50 bg-surface flex flex-row items-center justify-between">
-          <CardTitle className="text-lg text-on-surface flex items-center gap-2">
-            <Package className="h-5 w-5 text-accent" />
+      <Card className="border-gray-200 shadow-sm overflow-hidden">
+        <CardHeader className="border-b border-gray-200 bg-white flex flex-row items-center justify-between">
+          <CardTitle className="text-lg text-gray-900 flex items-center gap-2">
+            <Package className="h-5 w-5 text-[#0066CC]" />
             Line Items ({order.lineItems.length})
           </CardTitle>
           <div className="text-right">
-            <p className="text-xs text-on-surface-variant uppercase tracking-wider">Total Order Amount</p>
+            <p className="text-xs text-gray-500 uppercase tracking-wider">Total Order Amount</p>
             <p className="text-xl font-bold font-mono text-emerald-700">{formatCurrency(orderTotal)}</p>
           </div>
         </CardHeader>
@@ -363,25 +363,25 @@ export default function PurchaseOrderDetail() {
           <div className="overflow-x-auto">
             <table className="min-w-[600px] w-full border-separate border-spacing-0">
               <thead>
-                <tr className="bg-surface-container/70">
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                <tr className="bg-gray-50">
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                     SKU ID
                   </th>
-                  <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                  <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                     Quantity
                   </th>
-                  <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                  <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                     Unit Price
                   </th>
-                  <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                  <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                     Total
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-surface">
+              <tbody className="bg-white">
                 {order.lineItems.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-8 text-center text-xs text-on-surface-variant">
+                    <td colSpan={4} className="py-8 text-center text-xs text-gray-500">
                       No line items attached to this purchase order.
                     </td>
                   </tr>
@@ -389,20 +389,20 @@ export default function PurchaseOrderDetail() {
                   order.lineItems.map((item, idx) => (
                     <tr
                       key={item.id || idx}
-                      className={`border-t border-outline-variant/40 ${
-                        idx % 2 === 0 ? 'bg-surface' : 'bg-surface-lowest'
+                      className={`border-t border-gray-200 ${
+                        idx % 2 === 0 ? 'bg-white' : 'bg-white'
                       }`}
                     >
-                      <td className="px-6 py-4 align-top text-xs font-mono font-semibold text-accent">
+                      <td className="px-6 py-4 align-top text-xs font-mono font-semibold text-[#0066CC]">
                         {item.skuId}
                       </td>
-                      <td className="px-6 py-4 align-top text-sm text-right font-medium text-on-surface">
+                      <td className="px-6 py-4 align-top text-sm text-right font-medium text-gray-900">
                         {item.quantity}
                       </td>
-                      <td className="px-6 py-4 align-top text-sm text-right text-on-surface font-mono">
+                      <td className="px-6 py-4 align-top text-sm text-right text-gray-900 font-mono">
                         {formatCurrency(Number(item.unitPrice || 0))}
                       </td>
-                      <td className="px-6 py-4 align-top text-sm text-right font-bold text-on-surface font-mono">
+                      <td className="px-6 py-4 align-top text-sm text-right font-bold text-gray-900 font-mono">
                         {formatCurrency(Number(item.total || 0))}
                       </td>
                     </tr>
@@ -415,26 +415,26 @@ export default function PurchaseOrderDetail() {
       </Card>
 
       {/* Audit Metadata Card */}
-      <Card className="border-outline-variant/60 shadow-sm bg-surface-container-low p-4 text-xs text-on-surface-variant space-y-2">
-        <div className="font-semibold text-on-surface uppercase tracking-wider text-[11px]">
+      <Card className="border-gray-200 shadow-sm bg-gray-50-low p-4 text-xs text-gray-500 space-y-2">
+        <div className="font-semibold text-gray-900 uppercase tracking-wider text-[11px]">
           Audit Information
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t border-outline-variant/40">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t border-gray-200">
           <div>
-            <span className="block text-[10px] uppercase text-on-surface-variant/70">Created By</span>
-            <span className="font-medium text-on-surface">{order.createdBy || 'Manual'}</span>
+            <span className="block text-[10px] uppercase text-gray-500/70">Created By</span>
+            <span className="font-medium text-gray-900">{order.createdBy || 'Manual'}</span>
           </div>
           <div>
-            <span className="block text-[10px] uppercase text-on-surface-variant/70">Negotiation Run ID</span>
-            <span className="font-mono text-on-surface">{order.negotiationRunId || 'None'}</span>
+            <span className="block text-[10px] uppercase text-gray-500/70">Negotiation Run ID</span>
+            <span className="font-mono text-gray-900">{order.negotiationRunId || 'None'}</span>
           </div>
           <div>
-            <span className="block text-[10px] uppercase text-on-surface-variant/70">Created Timestamp</span>
-            <span className="text-on-surface">{formatDate(order.createdAt)}</span>
+            <span className="block text-[10px] uppercase text-gray-500/70">Created Timestamp</span>
+            <span className="text-gray-900">{formatDate(order.createdAt)}</span>
           </div>
           <div>
-            <span className="block text-[10px] uppercase text-on-surface-variant/70">Last Updated</span>
-            <span className="text-on-surface">{formatDate(order.updatedAt)}</span>
+            <span className="block text-[10px] uppercase text-gray-500/70">Last Updated</span>
+            <span className="text-gray-900">{formatDate(order.updatedAt)}</span>
           </div>
         </div>
       </Card>

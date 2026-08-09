@@ -49,14 +49,14 @@ export default function Anomalies() {
     <div className="max-w-container-max mx-auto">
       <div className="mb-lg flex justify-between items-end">
         <div>
-          <h2 className="font-headline-lg text-headline-lg text-on-surface mb-sm">Active Anomalies</h2>
-          <p className="font-body-md text-body-md text-on-surface-variant">Review and resolve flagged inventory patterns.</p>
+          <h2 className="font-headline-lg text-headline-lg text-gray-900 mb-sm">Active Anomalies</h2>
+          <p className="font-body-md text-body-md text-gray-500">Review and resolve flagged inventory patterns.</p>
         </div>
         <div className="flex gap-sm">
-          <span className="px-md py-sm rounded-full bg-error-container text-on-error-container font-label-md text-label-md flex items-center gap-xs">
+          <span className="px-md py-sm rounded-full bg-red-50 text-white-container font-label-md text-label-md flex items-center gap-xs">
             <span className="w-2 h-2 rounded-full bg-error"></span> {criticalCount} Critical
           </span>
-          <span className="px-md py-sm rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-label-md text-label-md flex items-center gap-xs">
+          <span className="px-md py-sm rounded-full bg-blue-50 text-blue-700 font-label-md text-label-md flex items-center gap-xs">
             <span className="w-2 h-2 rounded-full bg-tertiary-container"></span> {warningCount} Warnings
           </span>
         </div>
@@ -64,29 +64,29 @@ export default function Anomalies() {
 
       {loading ? (
         <div className="flex justify-center p-xl">
-          <span className="material-symbols-outlined animate-spin text-primary text-[32px]">progress_activity</span>
+          <span className="material-symbols-outlined animate-spin text-[#0066CC] text-[32px]">progress_activity</span>
         </div>
       ) : error ? (
-        <div className="p-md bg-error-container text-on-error-container rounded">{error}</div>
+        <div className="p-md bg-red-50 text-white-container rounded">{error}</div>
       ) : anomalies.length === 0 ? (
-        <div className="text-center p-xl text-on-surface-variant">No active anomalies.</div>
+        <div className="text-center p-xl text-gray-500">No active anomalies.</div>
       ) : (
         <div className="flex flex-col gap-md">
           {anomalies.map((anomaly) => {
             const isCritical = anomaly.type === 'critical';
             return (
-              <div key={anomaly.id} className="bg-surface-container-lowest border border-outline-variant rounded-lg p-lg flex flex-col md:flex-row gap-lg hover:shadow-sm transition-shadow duration-200">
+              <div key={anomaly.id} className="bg-gray-50/50 border border-gray-200 rounded-lg p-lg flex flex-col md:flex-row gap-lg hover:shadow-sm transition-shadow duration-200">
                 <div className="flex-1 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center gap-md mb-xs">
-                      <h3 className="font-headline-md text-headline-md text-on-surface">
+                      <h3 className="font-headline-md text-headline-md text-gray-900">
                         {anomaly.sku?.name ? `${anomaly.sku.sku} (${anomaly.sku.name})` : (anomaly.skuId || 'Unknown SKU')}
                       </h3>
-                      <span className={`px-sm py-xs rounded font-label-sm text-label-sm uppercase tracking-wider ${isCritical ? 'bg-error-container text-on-error-container' : 'bg-tertiary-fixed text-on-tertiary-fixed-variant'}`}>
+                      <span className={`px-sm py-xs rounded font-label-sm text-label-sm uppercase tracking-wider ${isCritical ? 'bg-red-50 text-white-container' : 'bg-blue-50 text-blue-700'}`}>
                         {anomaly.type}
                       </span>
                     </div>
-                    <p className="font-body-md text-body-md text-on-surface-variant mt-sm pr-lg font-semibold">
+                    <p className="font-body-md text-body-md text-gray-500 mt-sm pr-lg font-semibold">
                       {anomaly.description}
                     </p>
                     <p className="font-body-sm text-body-sm text-outline mt-sm pr-lg">
@@ -95,7 +95,7 @@ export default function Anomalies() {
                   </div>
                 </div>
                 
-                <div className="w-full md:w-64 flex flex-col justify-between border-t md:border-t-0 md:border-l border-outline-variant pt-md md:pt-0 md:pl-lg">
+                <div className="w-full md:w-64 flex flex-col justify-between border-t md:border-t-0 md:border-l border-gray-200 pt-md md:pt-0 md:pl-lg">
                   <div className="h-16 w-full mb-md relative">
                     {/* Placeholder for Sparkline based on type */}
                     {isCritical ? (
@@ -117,13 +117,13 @@ export default function Anomalies() {
                   <div className="flex gap-sm justify-end">
                     <button 
                       onClick={() => handleReview(anomaly.id)}
-                      className="flex-1 md:flex-none px-md py-sm rounded font-label-md text-label-md border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors"
+                      className="flex-1 md:flex-none px-md py-sm rounded font-label-md text-label-md border border-gray-200 text-gray-900 hover:bg-white-variant transition-colors"
                     >
                       Mark Reviewed
                     </button>
                     <button 
                       onClick={() => handleEscalate(anomaly.id)}
-                      className={`flex-1 md:flex-none px-md py-sm rounded font-label-md text-label-md text-on-error hover:bg-opacity-90 transition-colors ${isCritical ? 'bg-error' : 'bg-primary'}`}
+                      className={`flex-1 md:flex-none px-md py-sm rounded font-label-md text-label-md text-white hover:bg-opacity-90 transition-colors ${isCritical ? 'bg-error' : 'bg-[#0066CC]'}`}
                     >
                       {isCritical ? 'Escalate' : 'Investigate'}
                     </button>

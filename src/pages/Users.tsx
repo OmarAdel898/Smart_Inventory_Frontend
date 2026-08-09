@@ -17,11 +17,15 @@ import {
   Users as UsersIcon,
   Warehouse,
   X,
+  SlidersHorizontal,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getRoleFromToken } from '@/lib/auth';
 import { userCreateSchema, userEditSchema } from '@/features/users/validations';
+import { usePermissions } from '@/hooks/useCan';
 
 export type UserRole =
   | 'super_admin'
@@ -73,6 +77,7 @@ function getInitials(name: string | null, email: string): string {
 }
 
 export default function Users() {
+  const { can } = usePermissions();
   const token = getToken();
   const userRole = getRoleFromToken(token);
   const [users, setUsers] = useState<UserItem[]>([]);
@@ -85,6 +90,10 @@ export default function Users() {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -188,6 +197,9 @@ export default function Users() {
       return matchesSearch && matchesRole && matchesStatus;
     });
   }, [users, searchTerm, roleFilter, statusFilter]);
+
+  const totalPages = Math.ceil(filteredUsers.length / pageSize);
+  const paginatedUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   // Create User submit
   const handleCreateSubmit = async (e: React.FormEvent) => {
@@ -364,64 +376,57 @@ export default function Users() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div className="space-y-6 max-w-[1400px] mx-auto pb-10">
+      {/* Header Area */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between mb-2">
         <div>
-          <p className="text-sm font-medium text-accent">Administration</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-on-surface">User Management</h1>
-          <p className="mt-1 text-sm text-on-surface-variant">
-            Manage user roles, warehouse assignments, and security accounts.
-          </p>
+           <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Users</h2>
+           <p className="text-sm text-gray-500 mt-1">Manage user accounts, roles, and warehouse assignments.</p>
         </div>
-
         <div className="flex items-center gap-3">
-          <div className="inline-flex items-center gap-3 rounded-xl border border-outline-variant/70 bg-surface px-4 py-2.5 shadow-sm">
-            <UsersIcon className="h-4 w-4 text-accent" />
-            <span className="text-sm font-semibold text-on-surface">{users.length} Users</span>
-          </div>
-          <Button
-            variant="outline"
+          <button
             onClick={() => loadUsers(undefined, true)}
-            disabled={loading || refreshing}
-            className="gap-2"
+            disabled={refreshing}
+            className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-[13px] font-semibold text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-all disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
-          </Button>
-          <Button onClick={() => {
-            setIsCreateOpen(true);
-            setFieldErrors({});
-            setFormError(null);
-          }} className="gap-2 bg-primary text-white hover:bg-primary/90">
-            <Plus className="h-4 w-4" />
-            Create User
-          </Button>
+          </button>
+          {can('users.manage') && (
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-bold text-[#0066CC] bg-[#E6F4FF] hover:bg-[#D0E9FF] shadow-sm transition-all"
+            >
+              <Plus className="h-4 w-4" />
+              Create User
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <Card className="border-outline-variant/60 shadow-sm">
-        <CardContent className="p-4 flex flex-wrap items-center gap-4">
-          {/* Search Input */}
-          <div className="relative flex-1 min-w-[240px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
-            <input
-              type="text"
-              placeholder="Search by name, email, or username..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-1.5 text-sm bg-surface-container-low border border-outline-variant rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20"
-            />
-          </div>
-
-          {/* Role Filter */}
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-on-surface-variant" />
-            <select
+      {/* Main Card */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+        {/* Toolbar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-b border-gray-100 gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <button 
+              onClick={() => {
+                setStatusFilter('all');
+                setRoleFilter('all');
+                setSearchTerm('');
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-[13px] font-semibold text-gray-700 hover:bg-gray-50 bg-white shadow-sm transition-all"
+              title="Clear Filters"
+            >
+              <SlidersHorizontal className="w-4 h-4 text-gray-500" /> Filter
+            </button>
+            <select 
               value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="py-1.5 px-3 text-sm bg-surface border border-outline-variant rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20"
+              onChange={(e) => {
+                setRoleFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-[13px] font-semibold text-gray-700 bg-white hover:bg-gray-50 shadow-sm outline-none transition-all cursor-pointer"
             >
               <option value="all">All Roles</option>
               <option value="tenant_owner">Tenant Owner</option>
@@ -430,227 +435,167 @@ export default function Users() {
               <option value="inventory_clerk">Inventory Clerk</option>
               <option value="super_admin">Super Admin</option>
             </select>
+            <select 
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as any);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-[13px] font-semibold text-gray-700 bg-white hover:bg-gray-50 shadow-sm outline-none transition-all cursor-pointer"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
           </div>
+          <div className="relative w-full sm:w-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input 
+              type="text" 
+              placeholder="Search users..." 
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full sm:w-[260px] pl-9 pr-4 py-1.5 border border-gray-200 rounded-lg text-[13px] font-medium outline-none focus:border-[#E6F4FF] focus:ring-2 focus:ring-[#E6F4FF]/50 transition-all placeholder:text-gray-400"
+            />
+          </div>
+        </div>
 
-          {/* Status Tabs */}
-          <div className="flex items-center bg-surface-container border border-outline-variant/70 rounded-lg p-1">
-            <button
-              onClick={() => setStatusFilter('all')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                statusFilter === 'all'
-                  ? 'bg-surface text-primary shadow-sm'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
+        {/* Table Content */}
+        {loading ? (
+          <div className="py-24 flex flex-col items-center justify-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            <p className="text-[13px] font-medium text-gray-500">Loading users...</p>
+          </div>
+        ) : error ? (
+          <div className="py-24 flex flex-col items-center justify-center gap-4">
+            <AlertCircle className="h-6 w-6 text-[#B30024]" />
+            <p className="text-[13px] font-medium text-[#B30024]">{error}</p>
+            <button onClick={() => loadUsers(undefined, true)} className="text-[13px] font-bold text-[#0066CC] hover:underline">Try again</button>
+          </div>
+        ) : filteredUsers.length === 0 ? (
+          <div className="py-24 flex flex-col items-center justify-center gap-3">
+            <UsersIcon className="h-8 w-8 text-gray-300" />
+            <p className="text-[13px] font-medium text-gray-500">No users match your filter criteria.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-100 bg-white">
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Name</th>
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Status</th>
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Role</th>
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Warehouse</th>
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Created</th>
+                  <th className="px-6 py-4 w-12"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedUsers.map((u) => {
+                  const roleLabel = u.role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                  const statusInfo = u.isActive 
+                    ? { bg: 'bg-[#E6F4FF]', text: 'text-[#0066CC]', label: 'ACTIVE' } 
+                    : { bg: 'bg-gray-100', text: 'text-gray-500', label: 'INACTIVE' };
+
+                  return (
+                    <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
+                      <td className="px-6 py-4 align-middle">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-[#E6F4FF] text-[#0066CC] font-bold text-[13px] flex items-center justify-center shrink-0 shadow-sm">
+                            {getInitials(u.name, u.email)}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[14px] font-bold text-gray-900 leading-tight truncate max-w-[200px]">{u.name || u.username}</span>
+                            <span className="text-[12px] font-medium text-gray-500 leading-tight truncate max-w-[200px] mt-0.5">{u.email}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 align-middle">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${statusInfo.bg} ${statusInfo.text}`}>
+                          {statusInfo.label}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 align-middle text-[13px] font-medium text-gray-600">
+                        {roleLabel}
+                      </td>
+                      <td className="px-6 py-4 align-middle text-[13px] font-medium text-gray-600">
+                        {u.warehouseId ? u.warehouseId.slice(0,8).toUpperCase() : 'Global'}
+                      </td>
+                      <td className="px-6 py-4 align-middle text-[13px] font-medium text-gray-500 whitespace-nowrap">
+                        {formatDate(u.createdAt)}
+                      </td>
+                      <td className="px-6 py-4 align-middle text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => openEditModal(u)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-colors" title="Edit">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          {['tenant_owner', 'super_admin'].includes(userRole || '') && (
+                            u.isActive ? (
+                              <button onClick={() => { setDeletingUser(u); setFormError(null); }} className="p-1.5 rounded-lg text-gray-400 hover:bg-[#FFD9DF]/50 hover:text-[#B30024] transition-colors" title="Deactivate">
+                                <Ban className="w-4 h-4" />
+                              </button>
+                            ) : (
+                              <button onClick={() => handleReactivate(u)} className="p-1.5 rounded-full font-bold text-gray-400 hover:bg-[#E6F4FF] hover:text-[#0066CC] transition-colors" title="Reactivate">
+                                <UserCheck className="w-4 h-4" />
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        
+        {/* Pagination Footer */}
+        {!loading && !error && filteredUsers.length > 0 && (
+          <div className="border-t border-gray-100 px-6 py-4 flex items-center justify-between bg-gray-50/30 rounded-b-xl">
+            <button 
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="flex items-center gap-1.5 text-[13px] font-semibold text-gray-500 hover:text-gray-900 disabled:opacity-40 disabled:hover:text-gray-500 transition-colors"
             >
-              All
+              <ChevronLeft className="w-4 h-4" /> Previous
             </button>
-            <button
-              onClick={() => setStatusFilter('active')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                statusFilter === 'active'
-                  ? 'bg-surface text-primary shadow-sm'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-bold transition-all ${
+                    currentPage === i + 1 
+                      ? 'bg-[#E6F4FF] text-[#0066CC]' 
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+            <button 
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="flex items-center gap-1.5 text-[13px] font-semibold text-gray-500 hover:text-gray-900 disabled:opacity-40 disabled:hover:text-gray-500 transition-colors"
             >
-              Active ({users.filter((u) => u.isActive).length})
-            </button>
-            <button
-              onClick={() => setStatusFilter('inactive')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                statusFilter === 'inactive'
-                  ? 'bg-surface text-primary shadow-sm'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
-            >
-              Inactive ({users.filter((u) => !u.isActive).length})
+              Next <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Users Directory Table */}
-      <Card className="overflow-hidden border-outline-variant/60 shadow-sm">
-        <CardHeader className="border-b border-outline-variant/50 bg-surface">
-          <CardTitle className="text-xl text-on-surface">User Directory</CardTitle>
-          <CardDescription>
-            Showing {filteredUsers.length} of {users.length} registered accounts
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-              <Loader2 className="h-6 w-6 animate-spin text-accent" />
-              <p className="font-medium text-on-surface">Loading users...</p>
-            </div>
-          ) : error ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-4 text-on-surface-variant">
-              <AlertCircle className="h-6 w-6 text-red-600" />
-              <p className="text-sm text-on-surface">{error}</p>
-              <Button variant="outline" onClick={() => loadUsers()}>
-                Try again
-              </Button>
-            </div>
-          ) : filteredUsers.length === 0 ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-              <UsersIcon className="h-8 w-8 text-accent/50" />
-              <p className="font-medium text-on-surface">No users match your filter criteria.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-[900px] w-full border-separate border-spacing-0">
-                <thead>
-                  <tr className="bg-surface-container/70">
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      User
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Username
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Role
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Warehouse
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Status
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Created
-                    </th>
-                    <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-surface">
-                  {filteredUsers.map((u, idx) => {
-                    const roleInfo = ROLE_STYLES[u.role] || {
-                      label: u.role,
-                      bg: 'bg-gray-100',
-                      text: 'text-gray-800',
-                    };
-                    return (
-                      <tr
-                        key={u.id}
-                        className={`border-t border-outline-variant/40 transition-colors hover:bg-surface-container/40 group ${
-                          idx % 2 === 0 ? 'bg-surface' : 'bg-surface-lowest'
-                        }`}
-                      >
-                        {/* Name + Email + Avatar */}
-                        <td className="px-6 py-4 align-top">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0">
-                              {getInitials(u.name, u.email)}
-                            </div>
-                            <div>
-                              <p className="font-medium text-on-surface text-sm">
-                                {u.name || 'Unnamed User'}
-                              </p>
-                              <p className="text-xs text-on-surface-variant">{u.email}</p>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Username */}
-                        <td className="px-6 py-4 align-top text-xs font-mono text-on-surface">
-                          {u.username}
-                        </td>
-
-                        {/* Role Badge */}
-                        <td className="px-6 py-4 align-top">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${roleInfo.bg} ${roleInfo.text}`}
-                          >
-                            <Shield className="h-3 w-3" />
-                            {roleInfo.label}
-                          </span>
-                        </td>
-
-                        {/* Warehouse */}
-                        <td className="px-6 py-4 align-top text-xs">
-                          {u.warehouseId ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-surface-container border border-outline-variant text-on-surface font-mono">
-                              <Warehouse className="h-3 w-3 text-accent" />
-                              {u.warehouseId.slice(0, 8)}…
-                            </span>
-                          ) : (
-                            <span className="text-on-surface-variant/60">Global / None</span>
-                          )}
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-6 py-4 align-top">
-                          {u.isActive ? (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-700">
-                              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                              Active
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-on-surface-variant">
-                              <span className="w-2 h-2 rounded-full bg-gray-400" />
-                              Inactive
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Created Date */}
-                        <td className="px-6 py-4 align-top text-xs text-on-surface-variant">
-                          {formatDate(u.createdAt)}
-                        </td>
-
-                        {/* Actions */}
-                        <td className="px-6 py-4 align-top text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={() => openEditModal(u)}
-                              className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"
-                              title="Edit User"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                            {['tenant_owner', 'super_admin'].includes(userRole || '') && (
-                              u.isActive ? (
-                                <button
-                                  onClick={() => {
-                                    setDeletingUser(u);
-                                    setFormError(null);
-                                  }}
-                                  className="p-1.5 rounded-lg text-on-surface-variant hover:bg-red-50 hover:text-red-600 transition-colors"
-                                  title="Deactivate User"
-                                >
-                                  <Ban className="h-4 w-4" />
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleReactivate(u)}
-                                  className="p-1.5 rounded-lg text-on-surface-variant hover:bg-green-50 hover:text-green-600 transition-colors"
-                                  title="Reactivate User"
-                                >
-                                  <UserCheck className="h-4 w-4" />
-                                </button>
-                              )
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        )}
+      </div>
 
       {/* CREATE USER MODAL */}
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg bg-surface border border-outline-variant rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center justify-between border-b border-outline-variant px-6 py-4 bg-surface-container-low">
-              <h2 className="text-lg font-semibold text-on-surface flex items-center gap-2">
-                <Plus className="h-5 w-5 text-accent" />
+          <div className="w-full max-w-lg bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-gray-50-low">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Plus className="h-5 w-5 text-[#0066CC]" />
                 Create New User
               </h2>
               <button
@@ -658,7 +603,7 @@ export default function Users() {
                   setIsCreateOpen(false);
                   setFieldErrors({});
                 }}
-                className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg"
+                className="text-gray-500 hover:text-gray-900 p-1 rounded-lg"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -673,7 +618,7 @@ export default function Users() {
               )}
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                   Full Name
                 </label>
                 <input
@@ -681,14 +626,14 @@ export default function Users() {
                   placeholder="John Doe"
                   value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                  className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.name ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                  className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.name ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                 />
                 {fieldErrors.name && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.name}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                     Username *
                   </label>
                   <input
@@ -697,12 +642,12 @@ export default function Users() {
                     placeholder="jdoe"
                     value={createForm.username}
                     onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
-                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.username ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                    className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.username ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                   />
                   {fieldErrors.username && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.username}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                     Email *
                   </label>
                   <input
@@ -711,14 +656,14 @@ export default function Users() {
                     placeholder="jdoe@example.com"
                     value={createForm.email}
                     onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.email ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                    className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.email ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                   />
                   {fieldErrors.email && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.email}</p>}
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                   Password *
                 </label>
                 <input
@@ -727,14 +672,14 @@ export default function Users() {
                   placeholder="Min 8 chars, 1 uppercase, 1 symbol"
                   value={createForm.password}
                   onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                  className={`w-full px-3 py-2 text-sm font-mono bg-surface border rounded-lg focus:ring-2 ${fieldErrors.password ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                  className={`w-full px-3 py-2 text-sm font-mono bg-white border rounded-lg focus:ring-2 ${fieldErrors.password ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                 />
                 {fieldErrors.password && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.password}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                     Assigned Role
                   </label>
                   <select
@@ -742,7 +687,7 @@ export default function Users() {
                     onChange={(e) =>
                       setCreateForm({ ...createForm, role: e.target.value as UserRole })
                     }
-                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.role ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                    className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.role ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                   >
                     <option value="tenant_owner">Tenant Owner</option>
                     <option value="warehouse_manager">Warehouse Manager</option>
@@ -754,13 +699,13 @@ export default function Users() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                     Warehouse
                   </label>
                   <select
                     value={createForm.warehouseId}
                     onChange={(e) => setCreateForm({ ...createForm, warehouseId: e.target.value })}
-                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.warehouseId ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                    className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.warehouseId ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                   >
                     <option value="">Global / None</option>
                     {warehouses.map((w) => (
@@ -773,14 +718,14 @@ export default function Users() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-outline-variant flex justify-end gap-3">
-                <Button variant="outline" type="button" onClick={() => {
+              <div className="pt-4 border-t border-gray-200 flex justify-end gap-3">
+                <button variant="cancel" type="button" onClick={() => {
                   setIsCreateOpen(false);
                   setFieldErrors({});
-                }}>
+                }} className="px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-all">
                   Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting} className="gap-2 bg-primary text-white">
+                </button>
+                <Button type="submit" disabled={isSubmitting} className="gap-2">
                   {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                   Create User
                 </Button>
@@ -793,10 +738,10 @@ export default function Users() {
       {/* EDIT USER MODAL */}
       {editingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg bg-surface border border-outline-variant rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center justify-between border-b border-outline-variant px-6 py-4 bg-surface-container-low">
-              <h2 className="text-lg font-semibold text-on-surface flex items-center gap-2">
-                <Edit2 className="h-5 w-5 text-accent" />
+          <div className="w-full max-w-lg bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-gray-50-low">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Edit2 className="h-5 w-5 text-[#0066CC]" />
                 Edit User: {editingUser.username}
               </h2>
               <button
@@ -804,7 +749,7 @@ export default function Users() {
                   setEditingUser(null);
                   setFieldErrors({});
                 }}
-                className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg"
+                className="text-gray-500 hover:text-gray-900 p-1 rounded-lg"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -819,40 +764,40 @@ export default function Users() {
               )}
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                   Full Name
                 </label>
                 <input
                   type="text"
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.name ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                  className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.name ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                 />
                 {fieldErrors.name && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.name}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                     Username
                   </label>
                   <input
                     type="text"
                     value={editForm.username}
                     onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.username ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                    className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.username ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                   />
                   {fieldErrors.username && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.username}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                     Email
                   </label>
                   <input
                     type="email"
                     value={editForm.email}
                     onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.email ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                    className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.email ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                   />
                   {fieldErrors.email && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.email}</p>}
                 </div>
@@ -860,13 +805,13 @@ export default function Users() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                     Assigned Role
                   </label>
                   <select
                     value={editForm.role}
                     onChange={(e) => setEditForm({ ...editForm, role: e.target.value as UserRole })}
-                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.role ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                    className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.role ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                   >
                     <option value="tenant_owner">Tenant Owner</option>
                     <option value="warehouse_manager">Warehouse Manager</option>
@@ -878,13 +823,13 @@ export default function Users() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                     Warehouse
                   </label>
                   <select
                     value={editForm.warehouseId}
                     onChange={(e) => setEditForm({ ...editForm, warehouseId: e.target.value })}
-                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.warehouseId ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                    className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.warehouseId ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                   >
                     <option value="">Global / None</option>
                     {warehouses.map((w) => (
@@ -897,27 +842,27 @@ export default function Users() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 p-3 bg-surface-container rounded-lg">
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                 <input
                   type="checkbox"
                   id="isActiveToggle"
                   checked={editForm.isActive}
                   onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
-                  className="h-4 w-4 rounded border-outline-variant text-accent focus:ring-accent"
+                  className="h-4 w-4 rounded border-gray-200 text-[#0066CC] focus:ring-accent"
                 />
-                <label htmlFor="isActiveToggle" className="text-sm font-medium text-on-surface cursor-pointer">
+                <label htmlFor="isActiveToggle" className="text-sm font-medium text-gray-900 cursor-pointer">
                   Account Active
                 </label>
               </div>
 
-              <div className="pt-4 border-t border-outline-variant flex justify-end gap-3">
-                <Button variant="outline" type="button" onClick={() => {
+              <div className="pt-4 border-t border-gray-200 flex justify-end gap-3">
+                <button variant="cancel" type="button" onClick={() => {
                   setEditingUser(null);
                   setFieldErrors({});
-                }}>
+                }} className="px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-all">
                   Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting} className="gap-2 bg-primary text-white">
+                </button>
+                <Button type="submit" disabled={isSubmitting} className="gap-2">
                   {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                   Save Changes
                 </Button>
@@ -930,20 +875,20 @@ export default function Users() {
       {/* DELETE CONFIRMATION MODAL */}
       {deletingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md bg-surface border border-outline-variant rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150 p-6 space-y-4">
+          <div className="w-full max-w-md bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150 p-6 space-y-4">
             <div className="flex items-center gap-3 text-red-600">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
                 <Ban className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-on-surface">Deactivate User Confirmation</h3>
-                <p className="text-xs text-on-surface-variant">This action deactivates the user account.</p>
+                <h3 className="text-lg font-semibold text-gray-900">Deactivate User Confirmation</h3>
+                <p className="text-xs text-gray-500">This action deactivates the user account.</p>
               </div>
             </div>
 
-            <p className="text-sm text-on-surface-variant">
+            <p className="text-sm text-gray-500">
               Are you sure you want to deactivate user{' '}
-              <strong className="text-on-surface">{deletingUser.name || deletingUser.username}</strong> (
+              <strong className="text-gray-900">{deletingUser.name || deletingUser.username}</strong> (
               {deletingUser.email})?
             </p>
 
@@ -954,19 +899,15 @@ export default function Users() {
               </div>
             )}
 
-            <div className="pt-2 flex justify-end gap-3 border-t border-outline-variant">
-              <Button
-                variant="outline"
+            <div className="pt-2 flex justify-end gap-3 border-t border-gray-200">
+              <button
+                variant="cancel"
                 disabled={isSubmitting}
                 onClick={() => setDeletingUser(null)}
-              >
+               className="px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-all">
                 Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                disabled={isSubmitting}
-                onClick={handleDeleteConfirm}
-                className="gap-2 bg-red-600 text-white hover:bg-red-700"
+              </button>
+              <Button variant="destructive" disabled={isSubmitting} onClick={handleDeleteConfirm} className="gap-2 bg-red-600 hover:bg-red-700"
               >
                 {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                 Confirm Deactivate

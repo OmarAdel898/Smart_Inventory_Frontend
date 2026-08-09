@@ -95,18 +95,18 @@ export default function WarehouseCreate() {
 
   if (pageLoading) {
     return (
-      <div className="py-16 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-        <Loader2 className="h-6 w-6 animate-spin text-accent" />
-        <p className="font-medium text-on-surface">Loading warehouse...</p>
+      <div className="py-16 flex flex-col items-center justify-center gap-3 text-gray-500">
+        <Loader2 className="h-6 w-6 animate-spin text-[#0066CC]" />
+        <p className="font-medium text-gray-900">Loading warehouse...</p>
       </div>
     );
   }
 
   if (pageError) {
     return (
-      <div className="py-16 flex flex-col items-center justify-center gap-4 text-on-surface-variant">
+      <div className="py-16 flex flex-col items-center justify-center gap-4 text-gray-500">
         <AlertCircle className="h-6 w-6 text-red-600" />
-        <p className="text-sm text-on-surface">{pageError}</p>
+        <p className="text-sm text-gray-900">{pageError}</p>
         <Button variant="outline" onClick={() => navigate('/warehouses')}>Go back</Button>
       </div>
     );
@@ -114,11 +114,11 @@ export default function WarehouseCreate() {
 
   if (success) {
     return (
-      <div className="py-16 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
+      <div className="py-16 flex flex-col items-center justify-center gap-3 text-gray-500">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
           <CheckCircle2 className="h-6 w-6 text-green-600" />
         </div>
-        <p className="font-medium text-on-surface">
+        <p className="font-medium text-gray-900">
           Warehouse {isEdit ? 'updated' : 'created'} successfully
         </p>
         <p className="text-sm">Redirecting to warehouses list...</p>
@@ -134,33 +134,33 @@ export default function WarehouseCreate() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <p className="text-sm font-medium text-accent">Infrastructure</p>
-            <h1 className="text-3xl font-semibold tracking-tight text-on-surface">
+            <p className="text-sm font-medium text-[#0066CC]">Infrastructure</p>
+            <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
               {isEdit ? 'Edit Warehouse' : 'Create Warehouse'}
             </h1>
           </div>
         </div>
-        <p className="text-sm text-on-surface-variant max-w-2xl ml-10">
+        <p className="text-sm text-gray-500 max-w-2xl ml-10">
           {isEdit
             ? 'Update the warehouse information and operational status.'
             : 'Fill in the primary information for the new distribution hub.'}
         </p>
       </div>
 
-      <Card className="border-outline-variant/60 shadow-sm overflow-hidden">
-        <div className="h-1 bg-secondary w-full" />
-        <CardHeader className="border-b border-outline-variant/50 bg-surface">
+      <Card className="border-gray-200 shadow-sm overflow-hidden">
+        <div className="h-1 bg-gray-600 w-full" />
+        <CardHeader className="border-b border-gray-200 bg-white">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-xl text-on-surface">Warehouse Details</CardTitle>
+              <CardTitle className="text-xl text-gray-900">Warehouse Details</CardTitle>
               <CardDescription>
                 {isEdit
                   ? 'Modify the warehouse configuration below.'
                   : 'Configure the new warehouse location and operational status.'}
               </CardDescription>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-container-low border border-outline-variant/30">
-              <WarehouseIcon className="h-6 w-6 text-secondary" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-50-low border border-gray-200">
+              <WarehouseIcon className="h-6 w-6 text-gray-700" />
             </div>
           </div>
         </CardHeader>
@@ -168,7 +168,7 @@ export default function WarehouseCreate() {
         <form onSubmit={handleSubmit}>
           <CardContent className="p-8 space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-xs font-semibold uppercase tracking-wider text-on-surface">
+              <Label htmlFor="name" className="text-xs font-semibold uppercase tracking-wider text-gray-900">
                 Warehouse Name <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
@@ -189,11 +189,11 @@ export default function WarehouseCreate() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="location" className="text-xs font-semibold uppercase tracking-wider text-on-surface">
+              <Label htmlFor="location" className="text-xs font-semibold uppercase tracking-wider text-gray-900">
                 Location / Address
               </Label>
               <div className="relative">
-                <MapPin className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
+                <MapPin className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                 <Input
                   id="location"
                   value={location}
@@ -210,15 +210,15 @@ export default function WarehouseCreate() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-5 border-t border-b border-outline-variant/10">
-              <div className="flex items-center justify-between p-4 bg-surface-container-low rounded-lg border border-outline-variant/30">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-5 border-t border-b border-gray-200">
+              <div className="flex items-center justify-between p-4 bg-gray-50-low rounded-lg border border-gray-200">
                 <div className="flex items-center gap-3">
-                  <div className="bg-white p-2 rounded-lg border border-outline-variant/20">
-                    <Zap className="h-4 w-4 text-secondary" />
+                  <div className="bg-white p-2 rounded-lg border border-gray-200">
+                    <Zap className="h-4 w-4 text-gray-700" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-on-surface">Warehouse Status</p>
-                    <p className="text-[11px] text-on-surface-variant">Set the operational state</p>
+                    <p className="text-sm font-semibold text-gray-900">Warehouse Status</p>
+                    <p className="text-[11px] text-gray-500">Set the operational state</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -226,7 +226,7 @@ export default function WarehouseCreate() {
                     id="status"
                     value={status}
                     onChange={(e) => setStatus(e.target.value as 'active' | 'inactive')}
-                    className="h-9 rounded-md border border-outline-variant bg-white px-3 text-sm font-medium text-on-surface shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/30"
+                    className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm font-medium text-gray-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/30"
                   >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
@@ -235,9 +235,9 @@ export default function WarehouseCreate() {
               </div>
             </div>
 
-            <div className="flex gap-4 rounded-lg bg-surface-container border border-secondary/10 p-4">
-              <Info className="h-5 w-5 shrink-0 text-secondary" />
-              <p className="text-sm text-on-surface-variant">
+            <div className="flex gap-4 rounded-lg bg-gray-50 border border-secondary/10 p-4">
+              <Info className="h-5 w-5 shrink-0 text-gray-700" />
+              <p className="text-sm text-gray-500">
                 {isEdit
                   ? 'Changes to this warehouse will take effect immediately across the system.'
                   : 'Creating a new warehouse will automatically provision stock levels for all current catalog items. This process can take up to 2 minutes.'}
@@ -252,11 +252,11 @@ export default function WarehouseCreate() {
             )}
           </CardContent>
 
-          <div className="border-t border-outline-variant/50 bg-surface-container-low px-6 py-5 flex items-center justify-end gap-4">
-            <Button type="button" variant="outline" onClick={() => navigate('/warehouses')} className="px-6 py-2.5 h-auto">
+          <div className="border-t border-gray-200 bg-gray-50-low px-6 py-5 flex items-center justify-end gap-4">
+            <button type="button" variant="cancel" onClick={() => navigate('/warehouses')} className="px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-all px-6 py-2.5 h-auto">
               Cancel
-            </Button>
-            <Button type="submit" disabled={submitLoading} className="px-8 py-2.5 h-auto gap-2 shadow-lg shadow-primary/20">
+            </button>
+            <Button type="submit" disabled={submitLoading} className="px-8 py-2.5 h-auto gap-2 shadow-sm shadow-primary/20">
               {submitLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (

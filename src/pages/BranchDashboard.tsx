@@ -74,10 +74,10 @@ function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <Card className="border-outline-variant/60 shadow-sm overflow-hidden">
-      <CardHeader className="border-b border-outline-variant/50 bg-surface flex flex-row items-start justify-between gap-4">
+    <Card className="border-gray-200 shadow-sm overflow-hidden">
+      <CardHeader className="border-b border-gray-200 bg-white flex flex-row items-start justify-between gap-4">
         <div>
-          <CardTitle className="text-xl text-on-surface">{title}</CardTitle>
+          <CardTitle className="text-xl text-gray-900">{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </div>
         {action}
@@ -89,9 +89,9 @@ function SectionCard({
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="py-10 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-      <div className="w-11 h-11 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/40">
-        <Package className="h-5 w-5 text-accent" />
+    <div className="py-10 flex flex-col items-center justify-center gap-3 text-gray-500">
+      <div className="w-11 h-11 rounded-full bg-gray-50 flex items-center justify-center border border-gray-200">
+        <Package className="h-5 w-5 text-[#0066CC]" />
       </div>
       <p className="text-sm text-center max-w-sm">{message}</p>
     </div>
@@ -100,9 +100,9 @@ function EmptyState({ message }: { message: string }) {
 
 function LoadingState({ label }: { label: string }) {
   return (
-    <div className="py-10 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-      <Loader2 className="h-6 w-6 animate-spin text-accent" />
-      <p className="text-sm font-medium text-on-surface">{label}</p>
+    <div className="py-10 flex flex-col items-center justify-center gap-3 text-gray-500">
+      <Loader2 className="h-6 w-6 animate-spin text-[#0066CC]" />
+      <p className="text-sm font-medium text-gray-900">{label}</p>
     </div>
   );
 }
@@ -200,12 +200,12 @@ export default function BranchDashboard() {
 
   if (error) {
     return (
-      <div className="py-16 flex flex-col items-center justify-center gap-4 text-on-surface-variant">
+      <div className="py-16 flex flex-col items-center justify-center gap-4 text-gray-500">
         <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center border border-red-200">
           <AlertCircle className="h-5 w-5 text-red-600" />
         </div>
         <div className="text-center max-w-md">
-          <p className="font-medium text-on-surface">Unable to load warehouse dashboard</p>
+          <p className="font-medium text-gray-900">Unable to load warehouse dashboard</p>
           <p className="text-sm">{error}</p>
         </div>
         <Button variant="outline" onClick={() => loadSnapshot()} className="gap-2">
@@ -223,23 +223,23 @@ export default function BranchDashboard() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-medium text-accent">Warehouse Manager Dashboard</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-on-surface">{warehouseName}</h1>
-          <p className="mt-1 text-sm text-on-surface-variant">
+          <p className="text-sm font-medium text-[#0066CC]">Warehouse Manager Dashboard</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-gray-900">{warehouseName}</h1>
+          <p className="mt-1 text-sm text-gray-500">
             Live operational snapshot for warehouse at {warehouseLocation}.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="inline-flex items-center gap-3 rounded-xl border border-outline-variant/70 bg-surface px-4 py-3 shadow-sm">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 text-accent">
+          <div className="inline-flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0066CC]/10 text-[#0066CC]">
               <Warehouse className="h-4 w-4" />
             </div>
             <div className="leading-tight">
-              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-on-surface-variant">
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-gray-500">
                 Warehouse
               </p>
-              <p className="text-base font-semibold text-on-surface">{warehouseLocation}</p>
+              <p className="text-base font-semibold text-gray-900">{warehouseLocation}</p>
             </div>
           </div>
           <Button variant="outline" onClick={() => loadSnapshot(true)} disabled={refreshing} className="gap-2">
@@ -250,46 +250,46 @@ export default function BranchDashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="bg-surface-container-lowest border border-outline-variant/70 p-4 rounded-xl relative overflow-hidden shadow-sm">
+        <div className="bg-gray-50/50 border border-gray-200 p-4 rounded-xl relative overflow-hidden shadow-sm">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-red-500" />
-          <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
             Low Stock Items
           </p>
           <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-bold text-on-surface">{lowStockItems.length}</span>
+            <span className="text-2xl font-bold text-gray-900">{lowStockItems.length}</span>
             <AlertCircle className="h-5 w-5 text-red-500/60" />
           </div>
         </div>
 
-        <div className="bg-surface-container-lowest border border-outline-variant/70 p-4 rounded-xl relative overflow-hidden shadow-sm">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-accent" />
-          <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+        <div className="bg-gray-50/50 border border-gray-200 p-4 rounded-xl relative overflow-hidden shadow-sm">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-[#0066CC]" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
             Stock Levels
           </p>
           <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-bold text-on-surface">{stockLevels.length}</span>
-            <BarChart3 className="h-5 w-5 text-accent/60" />
+            <span className="text-2xl font-bold text-gray-900">{stockLevels.length}</span>
+            <BarChart3 className="h-5 w-5 text-[#0066CC]/60" />
           </div>
         </div>
 
-        <div className="bg-surface-container-lowest border border-outline-variant/70 p-4 rounded-xl relative overflow-hidden shadow-sm">
+        <div className="bg-gray-50/50 border border-gray-200 p-4 rounded-xl relative overflow-hidden shadow-sm">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-amber-500" />
-          <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
             Pending POs
           </p>
           <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-bold text-on-surface">{pendingPurchaseOrders.length}</span>
+            <span className="text-2xl font-bold text-gray-900">{pendingPurchaseOrders.length}</span>
             <Package className="h-5 w-5 text-amber-500/60" />
           </div>
         </div>
 
-        <div className="bg-surface-container-lowest border border-outline-variant/70 p-4 rounded-xl relative overflow-hidden shadow-sm">
+        <div className="bg-gray-50/50 border border-gray-200 p-4 rounded-xl relative overflow-hidden shadow-sm">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-blue-500" />
-          <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
             Pending Approvals
           </p>
           <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-bold text-on-surface">{pendingApprovals.length}</span>
+            <span className="text-2xl font-bold text-gray-900">{pendingApprovals.length}</span>
             <Clock3 className="h-5 w-5 text-blue-500/60" />
           </div>
         </div>
@@ -307,32 +307,32 @@ export default function BranchDashboard() {
               <div className="overflow-x-auto">
                 <table className="min-w-[760px] w-full border-separate border-spacing-0">
                   <thead>
-                    <tr className="bg-surface-container/70">
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">SKU</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Item</th>
-                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Qty</th>
-                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Threshold</th>
+                    <tr className="bg-gray-50">
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">SKU</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Item</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Qty</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Threshold</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-surface">
+                  <tbody className="bg-white">
                     {lowStockItems.map((item, index) => {
                       const tone = lowStockTone(item.quantity, item.reorderThreshold);
                       return (
                         <tr
                           key={item.id}
-                          className={`border-t border-outline-variant/40 ${
-                            index % 2 === 0 ? 'bg-surface' : 'bg-surface-lowest'
+                          className={`border-t border-gray-200 ${
+                            index % 2 === 0 ? 'bg-white' : 'bg-white'
                           }`}
                         >
-                          <td className="px-6 py-4 align-top text-sm font-mono font-semibold text-accent">{shortId(item.skuId)}</td>
+                          <td className="px-6 py-4 align-top text-sm font-mono font-semibold text-[#0066CC]">{shortId(item.skuId)}</td>
                           <td className="px-6 py-4 align-top">
-                            <div className="font-medium text-on-surface">{item.skuName}</div>
-                            <div className="text-xs text-on-surface-variant">{item.warehouseName || warehouseName}</div>
+                            <div className="font-medium text-gray-900">{item.skuName}</div>
+                            <div className="text-xs text-gray-500">{item.warehouseName || warehouseName}</div>
                           </td>
                           <td className="px-6 py-4 align-top text-right">
                             <StatusPill value={formatNumber(item.quantity)} tone={tone} />
                           </td>
-                          <td className="px-6 py-4 align-top text-right text-sm text-on-surface-variant">
+                          <td className="px-6 py-4 align-top text-right text-sm text-gray-500">
                             {formatNumber(item.reorderThreshold)}
                           </td>
                         </tr>
@@ -354,34 +354,34 @@ export default function BranchDashboard() {
               <div className="overflow-x-auto">
                 <table className="min-w-[860px] w-full border-separate border-spacing-0">
                   <thead>
-                    <tr className="bg-surface-container/70">
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">SKU</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Name</th>
-                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Qty</th>
-                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Safety</th>
-                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Reorder</th>
+                    <tr className="bg-gray-50">
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">SKU</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Name</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Qty</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Safety</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Reorder</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-surface">
+                  <tbody className="bg-white">
                     {stockLevels.map((item, index) => (
                       <tr
                         key={item.id}
-                        className={`border-t border-outline-variant/40 ${
-                          index % 2 === 0 ? 'bg-surface' : 'bg-surface-lowest'
+                        className={`border-t border-gray-200 ${
+                          index % 2 === 0 ? 'bg-white' : 'bg-white'
                         }`}
                       >
-                        <td className="px-6 py-4 align-top text-sm font-mono font-semibold text-accent">{shortId(item.skuId)}</td>
+                        <td className="px-6 py-4 align-top text-sm font-mono font-semibold text-[#0066CC]">{shortId(item.skuId)}</td>
                         <td className="px-6 py-4 align-top">
-                          <div className="font-medium text-on-surface">{item.skuName}</div>
-                          <div className="text-xs text-on-surface-variant">{item.warehouseName || warehouseName}</div>
+                          <div className="font-medium text-gray-900">{item.skuName}</div>
+                          <div className="text-xs text-gray-500">{item.warehouseName || warehouseName}</div>
                         </td>
-                        <td className="px-6 py-4 align-top text-right text-sm font-semibold text-on-surface">
+                        <td className="px-6 py-4 align-top text-right text-sm font-semibold text-gray-900">
                           {formatNumber(item.quantity)}
                         </td>
-                        <td className="px-6 py-4 align-top text-right text-sm text-on-surface-variant">
+                        <td className="px-6 py-4 align-top text-right text-sm text-gray-500">
                           {formatNumber(item.safetyStock)}
                         </td>
-                        <td className="px-6 py-4 align-top text-right text-sm text-on-surface-variant">
+                        <td className="px-6 py-4 align-top text-right text-sm text-gray-500">
                           {formatNumber(item.reorderThreshold)}
                         </td>
                       </tr>
@@ -400,7 +400,7 @@ export default function BranchDashboard() {
                 <select
                   value={selectedSkuId}
                   onChange={(e) => setSelectedSkuId(e.target.value)}
-                  className="w-full h-10 rounded-md border border-outline-variant bg-surface px-3 text-sm shadow-sm outline-none focus:ring-1 focus:ring-ring"
+                  className="w-full h-10 rounded-md border border-gray-200 bg-white px-3 text-sm shadow-sm outline-none focus:ring-1 focus:ring-ring"
                 >
                   <option value="">Select SKU</option>
                   {[...stockLevels, ...lowStockItems]
@@ -417,7 +417,7 @@ export default function BranchDashboard() {
             {movementsLoading ? (
               <LoadingState label="Loading stock movements..." />
             ) : movementsError ? (
-              <div className="py-10 flex flex-col items-center justify-center gap-4 text-on-surface-variant">
+              <div className="py-10 flex flex-col items-center justify-center gap-4 text-gray-500">
                 <AlertCircle className="h-6 w-6 text-red-600" />
                 <p className="text-sm text-center max-w-md">{movementsError}</p>
               </div>
@@ -427,37 +427,37 @@ export default function BranchDashboard() {
               <div className="overflow-x-auto">
                 <table className="min-w-[860px] w-full border-separate border-spacing-0">
                   <thead>
-                    <tr className="bg-surface-container/70">
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Time</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">SKU</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Reason</th>
-                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Change</th>
-                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">Balance</th>
+                    <tr className="bg-gray-50">
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Time</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">SKU</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Reason</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Change</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Balance</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-surface">
+                  <tbody className="bg-white">
                     {movements.map((movement, index) => {
                       const tone = movementTone(movement.quantityChange);
                       const reasonLabel = movement.reason.replace(/_/g, ' ');
                       return (
                         <tr
                           key={movement.id}
-                          className={`border-t border-outline-variant/40 ${
-                            index % 2 === 0 ? 'bg-surface' : 'bg-surface-lowest'
+                          className={`border-t border-gray-200 ${
+                            index % 2 === 0 ? 'bg-white' : 'bg-white'
                           }`}
                         >
-                          <td className="px-6 py-4 align-top text-xs text-on-surface-variant">
+                          <td className="px-6 py-4 align-top text-xs text-gray-500">
                             {formatDate(movement.createdAt)}
                           </td>
                           <td className="px-6 py-4 align-top">
-                            <div className="font-medium text-on-surface">{movement.skuName || 'Unknown SKU'}</div>
-                            <div className="text-xs font-mono text-on-surface-variant">{shortId(movement.skuId)}</div>
+                            <div className="font-medium text-gray-900">{movement.skuName || 'Unknown SKU'}</div>
+                            <div className="text-xs font-mono text-gray-500">{shortId(movement.skuId)}</div>
                           </td>
-                          <td className="px-6 py-4 align-top text-sm text-on-surface-variant">{reasonLabel}</td>
+                          <td className="px-6 py-4 align-top text-sm text-gray-500">{reasonLabel}</td>
                           <td className="px-6 py-4 align-top text-right">
                             <StatusPill value={`${movement.quantityChange > 0 ? '+' : ''}${formatNumber(movement.quantityChange)}`} tone={tone} />
                           </td>
-                          <td className="px-6 py-4 align-top text-right text-sm font-semibold text-on-surface">
+                          <td className="px-6 py-4 align-top text-right text-sm font-semibold text-gray-900">
                             {formatNumber(movement.balanceAfter)}
                           </td>
                         </tr>
@@ -473,28 +473,28 @@ export default function BranchDashboard() {
         <div className="space-y-6">
           <SectionCard title="warehouse details" description="Assigned warehouse information from the decoded token.">
             <div className="p-6 space-y-4">
-              <div className="rounded-xl border border-outline-variant/60 bg-surface-container-lowest p-4">
-                <div className="text-xs uppercase tracking-[0.12em] text-on-surface-variant">Name</div>
-                <div className="mt-1 font-semibold text-on-surface">{warehouseName}</div>
-                <div className="mt-2 text-xs text-on-surface-variant font-mono">{warehouseId || '—'}</div>
+              <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4">
+                <div className="text-xs uppercase tracking-[0.12em] text-gray-500">Name</div>
+                <div className="mt-1 font-semibold text-gray-900">{warehouseName}</div>
+                <div className="mt-2 text-xs text-gray-500 font-mono">{warehouseId || '—'}</div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-lg border border-outline-variant/60 p-3">
-                  <div className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">Location</div>
-                  <div className="mt-1 font-medium text-on-surface">{warehouseLocation}</div>
+                <div className="rounded-lg border border-gray-200 p-3">
+                  <div className="text-[11px] uppercase tracking-[0.12em] text-gray-500">Location</div>
+                  <div className="mt-1 font-medium text-gray-900">{warehouseLocation}</div>
                 </div>
-                <div className="rounded-lg border border-outline-variant/60 p-3">
-                  <div className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">Items</div>
-                  <div className="mt-1 font-medium text-on-surface">{stockLevels.length}</div>
+                <div className="rounded-lg border border-gray-200 p-3">
+                  <div className="text-[11px] uppercase tracking-[0.12em] text-gray-500">Items</div>
+                  <div className="mt-1 font-medium text-gray-900">{stockLevels.length}</div>
                 </div>
-                <div className="rounded-lg border border-outline-variant/60 p-3">
-                  <div className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">Units</div>
-                  <div className="mt-1 font-medium text-on-surface">{formatNumber(totalUnits)}</div>
+                <div className="rounded-lg border border-gray-200 p-3">
+                  <div className="text-[11px] uppercase tracking-[0.12em] text-gray-500">Units</div>
+                  <div className="mt-1 font-medium text-gray-900">{formatNumber(totalUnits)}</div>
                 </div>
-                <div className="rounded-lg border border-outline-variant/60 p-3">
-                  <div className="text-[11px] uppercase tracking-[0.12em] text-on-surface-variant">Reorder Gap</div>
-                  <div className="mt-1 font-medium text-on-surface">{formatNumber(totalReorderGap)}</div>
+                <div className="rounded-lg border border-gray-200 p-3">
+                  <div className="text-[11px] uppercase tracking-[0.12em] text-gray-500">Reorder Gap</div>
+                  <div className="mt-1 font-medium text-gray-900">{formatNumber(totalReorderGap)}</div>
                 </div>
               </div>
             </div>
@@ -506,15 +506,15 @@ export default function BranchDashboard() {
             ) : (
               <div className="divide-y divide-outline-variant/40">
                 {pendingPurchaseOrders.map((po: PurchaseOrderSummary) => (
-                  <div key={po.id} className="p-4 hover:bg-surface-container/30 transition-colors">
+                  <div key={po.id} className="p-4 hover:bg-gray-50 transition-colors">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="font-medium text-on-surface">{po.vendorName || shortId(po.vendorId)}</div>
-                        <div className="text-xs text-on-surface-variant font-mono mt-0.5">{shortId(po.id)}</div>
+                        <div className="font-medium text-gray-900">{po.vendorName || shortId(po.vendorId)}</div>
+                        <div className="text-xs text-gray-500 font-mono mt-0.5">{shortId(po.id)}</div>
                       </div>
                       <StatusPill value={po.status.replace(/_/g, ' ')} tone="amber" />
                     </div>
-                    <div className="mt-3 flex items-center justify-between text-xs text-on-surface-variant">
+                    <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
                       <span>{po.lineItemCount || 0} line items</span>
                       <span>{formatCurrency(po.totalAmount)}</span>
                     </div>
@@ -530,17 +530,17 @@ export default function BranchDashboard() {
             ) : (
               <div className="divide-y divide-outline-variant/40">
                 {pendingApprovals.map((approval: ApprovalSummary) => (
-                  <div key={approval.id} className="p-4 hover:bg-surface-container/30 transition-colors">
+                  <div key={approval.id} className="p-4 hover:bg-gray-50 transition-colors">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="font-medium text-on-surface">{approval.agentType.replace(/_/g, ' ')}</div>
-                        <div className="text-xs text-on-surface-variant mt-0.5">
+                        <div className="font-medium text-gray-900">{approval.agentType.replace(/_/g, ' ')}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">
                           Step {approval.stepNumber} · {shortId(approval.agentRunId)}
                         </div>
                       </div>
                       <StatusPill value={approval.status} tone="amber" />
                     </div>
-                    <div className="mt-3 text-xs text-on-surface-variant">
+                    <div className="mt-3 text-xs text-gray-500">
                       {formatDate(approval.createdAt)}
                     </div>
                   </div>
@@ -549,15 +549,15 @@ export default function BranchDashboard() {
             )}
           </SectionCard>
 
-          <Card className="border-outline-variant/60 shadow-sm bg-accent/5">
+          <Card className="border-gray-200 shadow-sm bg-[#0066CC]/5">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0066CC]/10 text-[#0066CC]">
                   <Warehouse className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-on-surface">Scope driven by JWT</div>
-                  <div className="text-xs text-on-surface-variant">
+                  <div className="text-sm font-semibold text-gray-900">Scope driven by JWT</div>
+                  <div className="text-xs text-gray-500">
                     Warehouse ID is pulled from the decoded access token, matching your task spec.
                   </div>
                 </div>

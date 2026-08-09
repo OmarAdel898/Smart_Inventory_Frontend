@@ -89,8 +89,8 @@ export default function CategoryCreate() {
 
   if (pageLoading) {
     return (
-      <div className="max-w-3xl mx-auto py-12 flex flex-col items-center justify-center text-on-surface-variant gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      <div className="max-w-3xl mx-auto py-12 flex flex-col items-center justify-center text-gray-500 gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-[#0066CC]" />
         <p className="font-medium">Loading category details...</p>
       </div>
     );
@@ -99,7 +99,7 @@ export default function CategoryCreate() {
   if (pageError) {
     return (
       <div className="max-w-3xl mx-auto space-y-6">
-        <Button variant="ghost" asChild className="-ml-4 text-on-surface-variant hover:text-on-surface mb-4">
+        <Button variant="ghost" asChild className="-ml-4 text-gray-500 hover:text-gray-900 mb-4">
           <Link to="/categories">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Categories
@@ -109,7 +109,7 @@ export default function CategoryCreate() {
           <AlertCircle className="h-10 w-10" />
           <div className="text-center">
             <h2 className="text-xl font-bold mb-1">Error Loading Category</h2>
-            <p className="text-on-surface-variant">{pageError}</p>
+            <p className="text-gray-500">{pageError}</p>
           </div>
         </div>
       </div>
@@ -119,24 +119,24 @@ export default function CategoryCreate() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <Button variant="ghost" asChild className="-ml-4 text-on-surface-variant hover:text-on-surface mb-2">
+        <Button variant="ghost" asChild className="-ml-4 text-gray-500 hover:text-gray-900 mb-2">
           <Link to="/categories">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Categories
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold text-on-surface tracking-tight">
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
           {isEdit ? 'Edit Category' : 'Create Category'}
         </h1>
-        <p className="text-on-surface-variant text-sm mt-1">
+        <p className="text-gray-500 text-sm mt-1">
           {isEdit ? 'Update existing product category details.' : 'Add a new product category to your system.'}
         </p>
       </div>
 
-      <Card className="border-outline-variant/40 shadow-sm bg-surface">
-        <CardHeader className="border-b border-outline-variant/20 bg-surface-container/20">
+      <Card className="border-gray-200  bg-white">
+        <CardHeader className="border-b border-gray-200 bg-gray-50">
           <CardTitle className="text-lg font-medium flex items-center gap-2">
-            <Boxes className="h-5 w-5 text-primary" />
+            <Boxes className="h-5 w-5 text-[#0066CC]" />
             Category Details
           </CardTitle>
           <CardDescription>Enter the basic information for this category.</CardDescription>
@@ -146,8 +146,8 @@ export default function CategoryCreate() {
             <div className="py-12 flex flex-col items-center justify-center text-green-600 gap-3">
               <CheckCircle2 className="h-12 w-12 text-green-500" />
               <div className="text-center">
-                <h3 className="text-xl font-bold text-on-surface mb-1">Success!</h3>
-                <p className="text-on-surface-variant">
+                <h3 className="text-xl font-bold text-gray-900 mb-1">Success!</h3>
+                <p className="text-gray-500">
                   Category has been {isEdit ? 'updated' : 'created'} successfully. Redirecting...
                 </p>
               </div>
@@ -163,7 +163,7 @@ export default function CategoryCreate() {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-on-surface font-medium">
+                  <Label htmlFor="name" className="text-gray-900 font-medium">
                     Category Name <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -178,7 +178,7 @@ export default function CategoryCreate() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description" className="text-on-surface font-medium">
+                  <Label htmlFor="description" className="text-gray-900 font-medium">
                     Description
                   </Label>
                   <Input
@@ -200,16 +200,16 @@ export default function CategoryCreate() {
                 </p>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-outline-variant/20">
-                <Button
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <button
                   type="button"
-                  variant="outline"
+                  variant="cancel"
                   onClick={() => navigate('/categories')}
                   disabled={submitLoading}
-                  className="bg-surface"
+                  className="px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-all "
                 >
                   Cancel
-                </Button>
+                </button>
                 <Button type="submit" disabled={submitLoading} className="min-w-[120px]">
                   {submitLoading ? (
                     <>

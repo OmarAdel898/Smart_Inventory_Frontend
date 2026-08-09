@@ -22,7 +22,7 @@ function FormField({ id, type, placeholder, label, value, onChange, error, requi
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium text-on-surface">{label}</label>
+      <label htmlFor={id} className="text-sm font-medium text-gray-900">{label}</label>
       <input
         id={id}
         type={type}
@@ -30,10 +30,10 @@ function FormField({ id, type, placeholder, label, value, onChange, error, requi
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
-        className={`w-full h-10 px-3 bg-surface-container rounded-lg border text-sm text-on-surface outline-none transition-all placeholder:text-on-surface-variant/50 focus:ring-1 ${
+        className={`w-full h-10 px-3 bg-gray-50 rounded-lg border text-sm text-gray-900 outline-none transition-all placeholder:text-gray-500/50 focus:ring-1 ${
           error
             ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
-            : 'border-outline-variant focus:border-accent focus:ring-accent'
+            : 'border-gray-200 focus:border-accent focus:ring-accent'
         }`}
       />
       {error && <p className="text-xs text-red-500">{error}</p>}
@@ -111,43 +111,23 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen">
-      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-navy to-accent p-8 flex-col justify-between relative overflow-hidden">
-        <div className="absolute -top-20 -right-20 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 w-[500px] h-[500px] bg-secondary-fixed/10 rounded-full blur-3xl" />
-        <div className="relative z-10 flex flex-col justify-between h-full">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-lg flex items-center justify-center text-white border border-white/20">
-              <span className="material-symbols-outlined">inventory_2</span>
-            </div>
-            <span className="text-2xl font-semibold text-white tracking-tight">StockSavvy</span>
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+      <div className="w-full max-w-[440px] bg-white rounded-3xl shadow-sm border border-gray-200 p-8 sm:p-10">
+        <div className="flex items-center gap-3 mb-8 justify-center">
+          <div className="w-10 h-10 bg-[#0066CC] text-white rounded-xl flex items-center justify-center shadow-sm">
+            <span className="material-symbols-outlined">inventory_2</span>
           </div>
-          <div className="max-w-sm">
-            <h1 className="text-[32px] font-semibold text-white leading-10 tracking-tight mb-4">Master Your Enterprise Inventory.</h1>
-            <p className="text-base text-white/80 leading-6">Streamline your supply chain, track assets in real-time, and make data-driven decisions with our intelligent inventory management platform.</p>
-          </div>
-          <div className="text-xs text-white/60 tracking-wide">&copy; 2026 StockSavvy Inc. All rights reserved.</div>
+          <span className="text-2xl font-semibold text-gray-900 tracking-tight">StockSavvy</span>
         </div>
-      </div>
-
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-8 bg-surface">
-        <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
-            <div className="w-10 h-10 bg-navy text-white rounded-lg flex items-center justify-center">
-              <span className="material-symbols-outlined">inventory_2</span>
-            </div>
-            <span className="text-2xl font-semibold text-on-surface tracking-tight">StockSavvy</span>
-          </div>
-
           <div className="mb-6">
-            <h2 className="text-2xl font-semibold text-on-surface mb-1">{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
-            <p className="text-sm text-on-surface-variant">{mode === 'login' ? 'Please enter your details to sign in.' : 'Join 2,000+ companies managing smarter inventory.'}</p>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-1">{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
+            <p className="text-sm text-gray-500">{mode === 'login' ? 'Please enter your details to sign in.' : 'Join 2,000+ companies managing smarter inventory.'}</p>
           </div>
 
-          <div className="flex p-1 bg-surface-container rounded-lg mb-6 border border-outline-variant/20">
+          <div className="flex p-1 bg-gray-50 rounded-lg mb-6 border border-gray-200">
             {(['login', 'register'] as const).map((m) => (
               <button key={m} type="button" onClick={() => { setMode(m); setErrors({}); setApiError(null); }}
-                className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${mode === m ? 'bg-surface text-on-surface shadow-sm border border-outline-variant/10' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${mode === m ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-900'}`}>
                 {m === 'login' ? 'Sign in' : 'Create account'}
               </button>
             ))}
@@ -179,17 +159,17 @@ export default function Login() {
             {mode === 'login' && (
               <div className="flex items-center justify-between mt-1 mb-2">
                 <label className="flex items-center gap-2 cursor-pointer group">
-                  <div className="relative flex items-center justify-center w-4 h-4 rounded border border-outline-variant group-hover:border-accent transition-colors">
-                    <input type="checkbox" className="peer appearance-none w-full h-full rounded cursor-pointer checked:bg-accent checked:border-accent transition-all" />
+                  <div className="relative flex items-center justify-center w-4 h-4 rounded border border-gray-200 group-hover:border-accent transition-colors">
+                    <input type="checkbox" className="peer appearance-none w-full h-full rounded cursor-pointer checked:bg-[#0066CC] checked:border-accent transition-all" />
                     <span className="material-symbols-outlined text-white text-[12px] absolute opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none select-none">check</span>
                   </div>
-                  <span className="text-sm text-on-surface-variant group-hover:text-on-surface transition-colors">Remember me</span>
+                  <span className="text-sm text-gray-500 group-hover:text-gray-900 transition-colors">Remember me</span>
                 </label>
-                <a href="/forgot-password" onClick={(e) => { e.preventDefault(); navigate('/forgot-password'); }} className="text-sm text-accent font-medium hover:underline cursor-pointer">Forgot password?</a>
+                <a href="/forgot-password" onClick={(e) => { e.preventDefault(); navigate('/forgot-password'); }} className="text-sm text-[#0066CC] font-medium hover:underline cursor-pointer">Forgot password?</a>
               </div>
             )}
 
-            <Button type="submit" className="w-full bg-navy hover:bg-navy/90 cursor-pointer" disabled={loading}>
+            <Button type="submit" className="w-full cursor-pointer h-11 text-base mt-2" disabled={loading}>
               {loading ? (
                 <span className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -207,21 +187,20 @@ export default function Login() {
           {mode === 'login' ? (
             <>
               <div className="relative text-center my-6">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-outline-variant" /></div>
-                <span className="relative bg-surface px-2 text-xs text-on-surface-variant uppercase tracking-wide">Or continue with</span>
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200" /></div>
+                <span className="relative bg-white px-2 text-xs text-gray-500 uppercase tracking-wide">Or continue with</span>
               </div>
               <div className="flex">
                 <Button variant="outline" className="flex-1 gap-2"><GoogleIcon /> Google</Button>
               </div>
             </>
           ) : (
-            <p className="text-center text-sm text-on-surface-variant mt-6">
+            <p className="text-center text-sm text-gray-500 mt-6">
               Already have an account?{' '}
-              <button type="button" onClick={() => { setMode('login'); setErrors({}); setApiError(null); }} className="text-accent font-semibold hover:underline cursor-pointer">Sign in</button>
+              <button type="button" onClick={() => { setMode('login'); setErrors({}); setApiError(null); }} className="text-[#0066CC] font-semibold hover:underline cursor-pointer">Sign in</button>
             </p>
           )}
         </div>
       </div>
-    </div>
   );
 }
