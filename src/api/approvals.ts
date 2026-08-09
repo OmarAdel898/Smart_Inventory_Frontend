@@ -31,9 +31,10 @@ interface ApprovalsApiResponse {
   meta: PaginationMeta;
 }
 
-export async function fetchApprovals(params: { agentType?: string; page?: number; limit?: number }) {
+export async function fetchApprovals(params: { agentType?: string; status?: string; page?: number; limit?: number }) {
   const searchParams = new URLSearchParams();
   if (params.agentType) searchParams.set('agentType', params.agentType);
+  if (params.status) searchParams.set('status', params.status);
   if (params.page) searchParams.set('page', String(params.page));
   if (params.limit) searchParams.set('limit', String(params.limit));
   const qs = searchParams.toString();
@@ -60,7 +61,7 @@ export async function approveApproval(id: string, body: { reviewedBy: string; ed
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
   });
-  return handleResponse<{ success: boolean; data: unknown }>(res);
+  return handleResponse<{ success: boolean; data: Approval & { createdPoIds?: string[] } }>(res);
 }
 
 export async function rejectApproval(id: string, body: { reviewedBy: string }) {
@@ -69,6 +70,19 @@ export async function rejectApproval(id: string, body: { reviewedBy: string }) {
   assertPermission(perms.includes('approvals.reject'), 'reject');
 
   const res = await fetch(`${BASE_URL}/approvals/${id}/reject`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(body),
+  });
+  return handleResponse<{ success: boolean; data: unknown }>(res);
+}
+
+export async function negotiateApproval(id: string, body: { reviewedBy: string }) {
+  const user = useAuthStore.getState().user;
+  const perms = getRolePermissions(user?.role || '');
+  assertPermission(perms.includes('approvals.reject'), 'defer to negotiation');
+
+  const res = await fetch(`${BASE_URL}/approvals/${id}/negotiate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),

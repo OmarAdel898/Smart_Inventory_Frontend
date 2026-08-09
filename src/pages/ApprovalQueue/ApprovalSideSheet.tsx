@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { approveApproval, rejectApproval } from '@/api/approvals';
+import { approveApproval, rejectApproval, negotiateApproval } from '@/api/approvals';
 import { useAuthStore } from '@/store/authStore';
 import { usePermissions } from '@/hooks/useCan';
 import type { Approval } from '@/pages/ApprovalQueue/types';
@@ -9,12 +9,14 @@ interface ApprovalSideSheetProps {
   isOpen: boolean;
   approval: Approval | null;
   onClose: () => void;
-  onStatusChanged: (id: string, newStatus: 'approved' | 'rejected') => void;
+  onStatusChanged: (id: string, newStatus: 'approved' | 'rejected' | 'deferred') => void;
+  onApproved?: (approval: Approval, createdPoIds: string[]) => void;
 }
 
-export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusChanged }: ApprovalSideSheetProps) {
+export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusChanged, onApproved }: ApprovalSideSheetProps) {
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [negotiating, setNegotiating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editedPayloadRaw, setEditedPayloadRaw] = useState('');
   const [copied, setCopied] = useState(false);
@@ -34,18 +36,19 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
         try { editedPayload = JSON.parse(editedPayloadRaw); }
         catch { throw new Error('Invalid JSON in payload edit'); }
       }
-      await approveApproval(approval.id, {
+      const result = await approveApproval(approval.id, {
         reviewedBy: user?.id || '',
         ...(editedPayload ? { editedPayload } : {}),
       });
       onStatusChanged(approval.id, 'approved');
+      onApproved?.(approval, result.data?.createdPoIds ?? []);
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to approve');
     } finally {
       setApproving(false);
     }
-  }, [approval, editedPayloadRaw, user, onStatusChanged, onClose]);
+  }, [approval, editedPayloadRaw, user, onStatusChanged, onApproved, onClose]);
 
   const handleReject = useCallback(async () => {
     if (!approval) return;
@@ -59,6 +62,21 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
       setError(e instanceof Error ? e.message : 'Failed to reject');
     } finally {
       setRejecting(false);
+    }
+  }, [approval, user, onStatusChanged, onClose]);
+
+  const handleNegotiate = useCallback(async () => {
+    if (!approval) return;
+    setNegotiating(true);
+    setError(null);
+    try {
+      await negotiateApproval(approval.id, { reviewedBy: user?.id || '' });
+      onStatusChanged(approval.id, 'deferred');
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to defer to negotiation');
+    } finally {
+      setNegotiating(false);
     }
   }, [approval, user, onStatusChanged, onClose]);
 
@@ -111,6 +129,23 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
               {error && (
                 <div className="bg-red-50 text-white-container px-4 py-3 rounded-lg text-body-sm">
                   {error}
+                </div>
+              )}
+
+              {approval.status !== 'pending' && (
+                <div className={`px-4 py-3 rounded-lg text-body-sm ${
+                  approval.status === 'approved'
+                    ? 'bg-green-100 text-green-800 border border-green-200'
+                    : approval.status === 'deferred'
+                      ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                      : 'bg-red-100 text-red-800 border border-red-200'
+                }`}>
+                  {approval.status === 'approved'
+                    ? `Approved by ${approval.reviewedBy?.substring(0, 8) ?? 'unknown'}`
+                    : approval.status === 'deferred'
+                      ? `Deferred to negotiation by ${approval.reviewedBy?.substring(0, 8) ?? 'unknown'}`
+                      : `Rejected by ${approval.reviewedBy?.substring(0, 8) ?? 'unknown'}`}
+                  {approval.reviewedAt ? ` on ${formatDate(approval.reviewedAt)}` : ''}
                 </div>
               )}
 
@@ -178,7 +213,7 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
               </section>
             </div>
 
-            {canApprove || canReject ? (
+            {approval.status === 'pending' && (canApprove || canReject) ? (
               <div className="p-6 border-t border-gray-200 bg-gray-50-low flex gap-4 shrink-0">
                 {canReject && (
                   <button
@@ -192,6 +227,21 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
                       <span className="material-symbols-outlined">close</span>
                     )}
                     Reject
+                  </button>
+                )}
+                {canReject && approval.agentType === 'reorder' && (
+                  <button
+                    onClick={handleNegotiate}
+                    disabled={negotiating || approving || rejecting}
+                    className="flex-1 px-6 py-3 bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition-colors shadow-sm shadow-amber-500/10 flex items-center justify-center gap-2 active:scale-95 duration-200 disabled:opacity-60"
+                    title="Defer this proposal to the negotiation agent"
+                  >
+                    {negotiating ? (
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                    ) : (
+                      <span className="material-symbols-outlined">swap_horiz</span>
+                    )}
+                    Negotiate First
                   </button>
                 )}
                 {canApprove && (

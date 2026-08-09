@@ -115,7 +115,7 @@ export default function Negotiations() {
                 <span className="material-symbols-outlined text-tertiary-container mt-[2px]" style={{ fontVariationSettings: "'FILL' 1" }}>pending_actions</span>
                 <div className="flex-1">
                   <h3 className="font-label-md text-label-md text-tertiary-container font-semibold">Awaiting your approval before this is sent</h3>
-                  <p className="font-body-sm text-body-sm text-blue-700 mt-unit">The AI has drafted a counter-offer based on the strategy. Review the terms below and approve to send to the vendor.</p>
+                  <p className="font-body-sm text-body-sm text-blue-700 mt-unit">The AI has drafted an outreach offer based on the strategy. Review the terms below and approve to send to the vendor.</p>
                 </div>
                 <div className="flex gap-sm shrink-0">
                   <button className="px-md py-sm bg-white rounded text-gray-500 font-label-md text-label-md border border-gray-200 hover:bg-gray-50/50 transition-colors">Edit Draft</button>
@@ -147,7 +147,7 @@ export default function Negotiations() {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-baseline gap-sm mb-xs">
-                      <span className="font-label-md text-label-md text-gray-900 font-semibold">Drafted Counter-Offer</span>
+                      <span className="font-label-md text-label-md text-gray-900 font-semibold">Drafted Offer</span>
                       <span className="font-label-sm text-label-sm text-gray-500">Pending Approval</span>
                     </div>
                     <div className="bg-gray-50/50 border-2 border-primary-fixed-dim rounded-lg p-md shadow-sm relative overflow-hidden">
