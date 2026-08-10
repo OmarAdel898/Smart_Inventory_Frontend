@@ -11,6 +11,7 @@ export interface ProfileResponse {
   role: string;
   email: string;
   username: string;
+  tenantId: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

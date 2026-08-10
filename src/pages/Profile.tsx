@@ -12,12 +12,20 @@ import {
   User,
   UserRound,
   UserSquare2,
+  CreditCard,
+  Zap,
+  Download,
+  Calendar,
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { api } from '@/api/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { profileApi, type ProfileResponse } from '@/api/profile.api';
+import { tenantApi, type TenantResponse } from '@/api/tenant.api';
+import { billingApi, type BillingPortalData } from '@/api/billing.api';
 import { useAuthStore } from '@/store/authStore';
 
 type ProfileFormState = {
@@ -107,6 +115,21 @@ export default function Profile() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'profile' | 'billing'>('profile');
+  const [plans, setPlans] = useState<any[]>([]);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [tenant, setTenant] = useState<TenantResponse | null>(null);
+  const [billingData, setBillingData] = useState<BillingPortalData | null>(null);
+  const [billingInfoLoading, setBillingInfoLoading] = useState(false);
+
+  const loadPlans = async () => {
+    try {
+      const data = await api.get<any[]>('/public/plans');
+      if (data && data.length > 0) setPlans(data);
+    } catch (e) {
+      console.error('Failed to load plans', e);
+    }
+  };
 
   const loadProfile = async (signal?: AbortSignal) => {
     setLoading(true);
@@ -139,11 +162,45 @@ export default function Profile() {
     }
   };
 
+  const loadTenant = async (tenantId: string) => {
+    try {
+      const data = await tenantApi.getTenant(tenantId);
+      setTenant(data);
+    } catch (e) {
+      console.error('Failed to load tenant', e);
+    }
+  };
+
   useEffect(() => {
     const controller = new AbortController();
     void loadProfile(controller.signal);
+    void loadPlans();
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (profile?.role === 'tenant_owner' && profile.tenantId) {
+      void loadTenant(profile.tenantId);
+    }
+  }, [profile?.tenantId, profile?.role]);
+
+  useEffect(() => {
+    const tenantId = profile?.tenantId;
+    if (activeTab === 'billing' && tenantId) {
+      const loadBillingInfo = async () => {
+        setBillingInfoLoading(true);
+        try {
+          const data = await billingApi.getBillingInfo(tenantId);
+          setBillingData(data);
+        } catch (e) {
+          console.error('Failed to load billing info', e);
+        } finally {
+          setBillingInfoLoading(false);
+        }
+      };
+      void loadBillingInfo();
+    }
+  }, [activeTab, profile?.tenantId]);
 
   useEffect(() => {
     return () => {
@@ -259,6 +316,30 @@ export default function Profile() {
     }
   };
 
+  const handleUpgrade = async (planId: string) => {
+    if (!profile?.tenantId) {
+      alert("No tenant associated with your account.");
+      return;
+    }
+    setBillingLoading(true);
+    try {
+      const result = await api.post<any>('/stripe/checkout-session', {
+        tenantId: profile.tenantId,
+        planId: planId,
+        successUrl: window.location.origin + '/profile?checkout=success',
+        cancelUrl: window.location.origin + '/profile?checkout=cancel',
+      });
+      if (result && result.url) {
+        window.location.href = result.url;
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Failed to start checkout session. Ensure Stripe is properly configured.');
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="py-16 flex flex-col items-center justify-center gap-3 text-gray-500">
@@ -325,6 +406,29 @@ export default function Profile() {
         </div>
       )}
 
+      <div className="flex border-b border-gray-200 mb-6">
+        <button
+          onClick={() => setActiveTab('profile')}
+          className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${
+            activeTab === 'profile' ? 'border-[#0066CC] text-[#0066CC]' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Profile Details
+        </button>
+        {profile?.role === 'tenant_owner' && (
+          <button
+            onClick={() => setActiveTab('billing')}
+            className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${
+              activeTab === 'billing' ? 'border-[#0066CC] text-[#0066CC]' : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <CreditCard className="w-4 h-4" />
+            Billing & Plans
+          </button>
+        )}
+      </div>
+
+      {activeTab === 'profile' && (
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)] gap-6 items-start">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="border-b border-gray-100 bg-gray-50/50 p-6">
@@ -483,6 +587,215 @@ export default function Profile() {
           </div>
         </div>
       </div>
+      )}
+
+      {activeTab === 'billing' && (
+        <div className="space-y-6 max-w-4xl">
+          {tenant?.subscriptionStatus === 'active' ? (
+            <>
+              {/* Current Subscription Card */}
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="p-8">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Current subscription</h2>
+                    <div className="flex gap-3">
+                      <Button variant="outline" className="font-bold rounded-lg border-gray-200">Change</Button>
+                    </div>
+                  </div>
+                  
+                  {billingData?.nextPaymentDate && (
+                    <p className="text-[14px] text-gray-600 mb-6">
+                      Your account is billed monthly and the next payment is due to <span className="font-bold text-gray-900">{formatDate(billingData.nextPaymentDate)}</span>.
+                    </p>
+                  )}
+
+                  <div className="rounded-xl border border-gray-200 overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          <th className="px-6 py-4">Selected Plan</th>
+                          <th className="px-6 py-4">Price</th>
+                          <th className="px-6 py-4">Seats</th>
+                          <th className="px-6 py-4">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        <tr>
+                          <td className="px-6 py-5">
+                            <span className="font-bold text-gray-900">{tenant?.plan?.name || 'Premium'}</span>
+                          </td>
+                          <td className="px-6 py-5 font-bold text-gray-900">
+                            ${tenant?.plan?.price || 99}/month
+                          </td>
+                          <td className="px-6 py-5 text-gray-600 font-medium">
+                            Unlimited
+                          </td>
+                          <td className="px-6 py-5">
+                             <span className="bg-[#E6FFE6] text-[#008A00] px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase inline-flex items-center gap-1 border border-[#008A00]/20">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Active
+                              </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Credit Card Details */}
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="p-8">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Credit card details</h2>
+                    <Button variant="outline" className="font-bold rounded-lg border-gray-200">Update</Button>
+                  </div>
+                  
+                  {billingInfoLoading ? (
+                    <div className="py-4 flex items-center gap-2 text-gray-500">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Loading payment details...
+                    </div>
+                  ) : billingData?.paymentMethod ? (
+                    <div className="space-y-4 max-w-md">
+                      <div className="flex justify-between py-3 border-b border-gray-100">
+                        <span className="text-[12px] font-bold uppercase tracking-wider text-gray-500 w-40">Cardholder Name</span>
+                        <span className="font-bold text-gray-900">{profile?.name || profile?.username}</span>
+                      </div>
+                      <div className="flex justify-between py-3 border-b border-gray-100">
+                        <span className="text-[12px] font-bold uppercase tracking-wider text-gray-500 w-40">Card Number</span>
+                        <span className="font-bold text-gray-900 flex items-center gap-2">
+                          <CreditCard className="w-4 h-4 text-gray-400" />
+                          <span className="capitalize">{billingData.paymentMethod.brand}</span> •••• {billingData.paymentMethod.last4}
+                        </span>
+                      </div>
+                      <div className="flex justify-between py-3 border-b border-gray-100">
+                        <span className="text-[12px] font-bold uppercase tracking-wider text-gray-500 w-40">Expiration Date</span>
+                        <span className="font-bold text-gray-900">{billingData.paymentMethod.expMonth}/{billingData.paymentMethod.expYear}</span>
+                      </div>
+                      <div className="flex justify-between py-3">
+                        <span className="text-[12px] font-bold uppercase tracking-wider text-gray-500 w-40">Billing Email</span>
+                        <span className="font-bold text-gray-900">{profile?.email}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-gray-500 py-4 font-medium">No payment method on file.</div>
+                  )}
+                </div>
+              </div>
+
+              {/* History */}
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="p-8">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">History</h2>
+                  
+                  {billingInfoLoading ? (
+                    <div className="py-8 flex justify-center">
+                      <Loader2 className="w-6 h-6 animate-spin text-[#0066CC]" />
+                    </div>
+                  ) : billingData?.history && billingData.history.length > 0 ? (
+                    <div className="rounded-xl border border-gray-200 overflow-hidden">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-gray-50 border-b border-gray-200 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                            <th className="px-6 py-4">Date</th>
+                            <th className="px-6 py-4">Item</th>
+                            <th className="px-6 py-4">Download</th>
+                            <th className="px-6 py-4 text-right">Charge</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {billingData.history.map((invoice) => (
+                            <tr key={invoice.id} className="hover:bg-gray-50/50 transition-colors">
+                              <td className="px-6 py-4 font-medium text-gray-900">
+                                {formatDate(invoice.date)}
+                              </td>
+                              <td className="px-6 py-4 text-gray-600 font-medium">
+                                {tenant?.plan?.name || 'Premium'} - Monthly plan
+                              </td>
+                              <td className="px-6 py-4">
+                                {invoice.invoicePdf && invoice.invoicePdf !== '#' ? (
+                                  <a href={invoice.invoicePdf} target="_blank" rel="noreferrer" className="text-[#0066CC] hover:underline font-bold text-sm inline-flex items-center gap-1.5">
+                                    <FileText className="w-3.5 h-3.5" />
+                                    Invoice.pdf
+                                  </a>
+                                ) : (
+                                  <span className="text-gray-400 text-sm font-medium inline-flex items-center gap-1.5">
+                                    <FileText className="w-3.5 h-3.5" />
+                                    Invoice.pdf
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 font-bold text-gray-900 text-right">
+                                ${(invoice.amount / 100).toFixed(2)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center text-gray-500 font-medium border border-dashed border-gray-200 rounded-xl">
+                      No billing history available.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Subscription Plans</h2>
+                <p className="text-gray-500 mb-8">Upgrade your plan to unlock more features and higher limits.</p>
+
+                <div className="grid md:grid-cols-3 gap-6">
+                  {plans.map((plan) => (
+                    <div key={plan.id} className={`rounded-2xl p-6 flex flex-col relative border ${plan.isPopular ? 'border-[#0066CC] bg-[#F5FAFF]' : 'border-gray-200 bg-white'}`}>
+                      {plan.isPopular && (
+                        <div className="absolute top-0 right-6 transform -translate-y-1/2 bg-[#0066CC] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                          Most Popular
+                        </div>
+                      )}
+                      <h3 className="text-xl font-bold text-gray-900 mb-1">{plan.name}</h3>
+                      <p className="text-sm text-gray-500 mb-6 flex-1">{plan.description}</p>
+                      
+                      <div className="mb-6">
+                        {plan.price !== null ? (
+                          <>
+                            <span className="text-4xl font-extrabold text-gray-900">${plan.price}</span>
+                            <span className="text-gray-500 font-medium">/mo</span>
+                          </>
+                        ) : (
+                          <span className="text-4xl font-extrabold text-gray-900">Custom</span>
+                        )}
+                      </div>
+
+                      <button 
+                        onClick={() => handleUpgrade(plan.id)}
+                        disabled={billingLoading || plan.price === null}
+                        className={`w-full py-2.5 px-4 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 ${
+                          plan.isPopular 
+                            ? 'bg-[#0066CC] hover:bg-[#0052a3] text-white' 
+                            : (plan.price === null ? 'bg-gray-100 text-gray-500' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50')
+                        }`}
+                      >
+                        {billingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                        {plan.price === null ? 'Contact Sales' : 'Upgrade'}
+                      </button>
+                      
+                      <div className="space-y-3 mt-6 pt-6 border-t border-gray-100">
+                        {plan.features?.map((feature: string, i: number) => (
+                          <div key={i} className="flex items-start gap-3">
+                            <CheckCircle2 className="w-4 h-4 shrink-0 text-[#0066CC]" />
+                            <span className="text-sm font-medium text-gray-600">{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+            </div>
+            )}
+        </div>
+      )}
     </div>
   );
 }
