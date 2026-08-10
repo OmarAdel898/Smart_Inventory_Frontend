@@ -29,6 +29,7 @@ export default function WarehouseCreate() {
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
   const [status, setStatus] = useState<'active' | 'inactive'>('active');
+  const [capacityUnits, setCapacityUnits] = useState<string>('');
   const [errors, setErrors] = useState<Partial<Record<keyof WarehouseFormValues, string>>>({});
 
   const [pageLoading, setPageLoading] = useState(isEdit);
@@ -45,6 +46,7 @@ export default function WarehouseCreate() {
         setName(warehouse.name);
         setLocation(warehouse.location || '');
         setStatus(warehouse.status);
+        setCapacityUnits(warehouse.capacityUnits != null ? String(warehouse.capacityUnits) : '');
       } catch (err) {
         setPageError(err instanceof Error ? err.message : 'Failed to load warehouse.');
       } finally {
@@ -62,6 +64,7 @@ export default function WarehouseCreate() {
       name: name.trim(),
       location: location.trim() || undefined,
       status,
+      capacityUnits: capacityUnits.trim() === '' ? undefined : Number(capacityUnits),
     };
 
     const parsed = warehouseSchema.safeParse(data);
@@ -206,6 +209,29 @@ export default function WarehouseCreate() {
                 <div className="flex items-center gap-1.5 text-red-600">
                   <AlertCircle className="h-3.5 w-3.5" />
                   <span className="text-xs font-medium">{errors.location}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="capacityUnits" className="text-xs font-semibold uppercase tracking-wider text-gray-900">
+                Capacity (Units)
+              </Label>
+              <div className="relative">
+                <Input
+                  id="capacityUnits"
+                  type="number"
+                  min={0}
+                  value={capacityUnits}
+                  onChange={(e) => setCapacityUnits(e.target.value)}
+                  placeholder="e.g. 2000 — total storage capacity in units"
+                  className={`h-12 px-4 py-3 text-sm ${errors.capacityUnits ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                />
+              </div>
+              {errors.capacityUnits && (
+                <div className="flex items-center gap-1.5 text-red-600">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium">{errors.capacityUnits}</span>
                 </div>
               )}
             </div>

@@ -23,24 +23,68 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/api/client';
-import { warehouseApi, type Warehouse } from '@/api/warehouse.api';
+import { warehouseApi, type Warehouse, type WarehouseSummary } from '@/api/warehouse.api';
 import { getAccessTokenFromCookie, getWarehouseIdFromToken, getRoleFromToken } from '@/lib/auth';
 
-function formatDate(value?: string): string {
+function formatTime(value?: string): string {
   if (!value) return '—';
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '—' : new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(d);
+  return Number.isNaN(d.getTime()) ? '—' : new Intl.DateTimeFormat('en', { timeStyle: 'short' }).format(d);
+}
+
+interface ActivityItem {
+  id: string;
+  title: string;
+  sub: string;
+  color: string;
+}
+
+const ACTIVITY_LABELS: Record<string, string> = {
+  purchase_order_receipt: 'Stock In',
+  customer_return: 'Return In',
+  agent_reorder: 'Agent Reorder',
+  transfer_in: 'Transfer In',
+  sale: 'Stock Out',
+  supplier_return: 'Stock Out',
+  transfer_out: 'Transfer Out',
+  write_off: 'Write Off',
+  manual_adjustment: 'Adjustment',
+};
+
+const ACTIVITY_COLORS: Record<string, string> = {
+  purchase_order_receipt: 'bg-[#86EFAC]',
+  customer_return: 'bg-[#86EFAC]',
+  agent_reorder: 'bg-[#93C5FD]',
+  transfer_in: 'bg-[#FDBA74]',
+  sale: 'bg-[#FCA5A5]',
+  supplier_return: 'bg-[#FCA5A5]',
+  transfer_out: 'bg-[#FDBA74]',
+  write_off: 'bg-[#FCA5A5]',
+  manual_adjustment: 'bg-[#93C5FD]',
+};
+
+function toActivity(m: { id: string; skuName?: string | null; reason: string; quantityChange: number; createdAt: string }): ActivityItem {
+  const label = ACTIVITY_LABELS[m.reason] || m.reason.replace(/_/g, ' ');
+  const sku = m.skuName || 'SKU';
+  return {
+    id: m.id,
+    title: `${label}: ${m.quantityChange > 0 ? '+' : ''}${m.quantityChange} ${sku}`,
+    sub: m.createdAt ?? '—',
+    color: ACTIVITY_COLORS[m.reason] || 'bg-[#93C5FD]',
+  };
 }
 
 export default function Warehouses() {
   const navigate = useNavigate();
   const token = getAccessTokenFromCookie();
   const userRole = getRoleFromToken(token);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [warehouses, setWarehouses] = useState<WarehouseSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Warehouse | null>(null);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<Warehouse | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -52,7 +96,7 @@ export default function Warehouses() {
   const [modal, setModal] = useState<{ open: boolean; mode: 'create' | 'edit'; target: Warehouse | null }>({
     open: false, mode: 'create', target: null
   });
-  const [form, setForm] = useState({ name: '', location: '', status: 'active' as 'active' | 'inactive', managerId: '' });
+  const [form, setForm] = useState({ name: '', location: '', status: 'active' as 'active' | 'inactive', managerId: '', capacityUnits: '' });
   const [managers, setManagers] = useState<{id: string, name: string, warehouseId: string | null}[]>([]);
   const [formErrors, setFormErrors] = useState<{name?: string; location?: string}>({});
   const [formLoading, setFormLoading] = useState(false);
@@ -79,7 +123,7 @@ export default function Warehouses() {
     setError(null);
 
     try {
-      const data = await warehouseApi.list();
+      const data = await warehouseApi.summary();
       setWarehouses(Array.isArray(data) ? data : []);
       if (Array.isArray(data) && data.length > 0 && !selected) {
         setSelected(data[0]);
@@ -92,6 +136,24 @@ export default function Warehouses() {
     }
   };
 
+  const loadActivities = async (warehouseId: string) => {
+    setActivitiesLoading(true);
+    try {
+      const data = await api.get<any>(`/inventory/stock-movements?warehouseId=${warehouseId}&limit=5`);
+      const list = data?.success === true ? data.data : Array.isArray(data) ? data : [];
+      setActivities(Array.isArray(list) ? list.map(toActivity) : []);
+    } catch (err) {
+      console.error('Failed to load recent activity', err);
+      setActivities([]);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selected?.id) void loadActivities(selected.id);
+  }, [selected?.id]);
+
   const openModal = (mode: 'create' | 'edit', target?: Warehouse) => {
     if (mode === 'edit' && target) {
       const currentManager = managers.find(m => m.warehouseId === target.id);
@@ -99,11 +161,12 @@ export default function Warehouses() {
         name: target.name,
         location: target.location || '',
         status: target.status === 'inactive' ? 'inactive' : 'active',
-        managerId: currentManager?.id || ''
+        managerId: currentManager?.id || '',
+        capacityUnits: target.capacityUnits != null ? String(target.capacityUnits) : '',
       });
       setModal({ open: true, mode, target });
     } else {
-      setForm({ name: '', location: '', status: 'active', managerId: '' });
+      setForm({ name: '', location: '', status: 'active', managerId: '', capacityUnits: '' });
       setModal({ open: true, mode: 'create', target: null });
     }
     setFormErrors({});
@@ -112,7 +175,7 @@ export default function Warehouses() {
 
   const closeModal = () => {
     setModal({ open: false, mode: 'create', target: null });
-    setForm({ name: '', location: '', status: 'active', managerId: '' });
+    setForm({ name: '', location: '', status: 'active', managerId: '', capacityUnits: '' });
   };
 
   const handleSubmitForm = async (e: React.FormEvent) => {
@@ -125,6 +188,7 @@ export default function Warehouses() {
         name: form.name,
         location: form.location,
         status: form.status,
+        capacityUnits: form.capacityUnits.trim() === '' ? undefined : Number(form.capacityUnits),
       };
 
       let warehouseId = modal.target?.id;
@@ -133,14 +197,17 @@ export default function Warehouses() {
         const created = await warehouseApi.create(payload);
         warehouseId = created?.id;
         if (created && created.id) {
-          setWarehouses(prev => [...prev, created]);
-          if (!selected) setSelected(created);
+          const summary = { ...created, units: 0, stockValue: 0, targetValue: 0, coveragePct: 0, skuCount: 0, lowStockCount: 0, openOrderCount: 0, staffCount: 0 } as WarehouseSummary;
+          setWarehouses(prev => [...prev, summary]);
+          if (!selected) setSelected(summary);
         }
       } else if (modal.target) {
         const updated = await warehouseApi.update(modal.target.id, payload);
         if (updated && updated.id) {
-          setWarehouses(prev => prev.map(w => w.id === updated.id ? updated : w));
-          if (selected?.id === updated.id) setSelected(updated);
+          const prev = warehouses.find(w => w.id === updated.id);
+          const summary = { ...prev, ...updated } as WarehouseSummary;
+          setWarehouses(list => list.map(w => w.id === updated.id ? summary : w));
+          if (selected?.id === updated.id) setSelected(summary);
         }
       }
       
@@ -264,9 +331,8 @@ export default function Warehouses() {
                   </div>
                 </div>
                 <div className="text-right">
-                  {/* Note: Units mock data for layout purposes */}
                   <div className="text-[15px] font-bold text-gray-900 leading-tight">
-                    {Math.floor(Math.random() * 500) + 800}
+                    {w.units ?? 0}
                   </div>
                   <div className="text-[12px] font-medium text-gray-500">units</div>
                 </div>
@@ -357,7 +423,7 @@ export default function Warehouses() {
                   <div className="grid grid-cols-2 gap-y-3 gap-x-4 flex-1">
                     <div>
                       <div className="text-[13px] font-medium text-gray-900 mb-0.5">Location</div>
-                      <div className="text-[13px] text-gray-600 truncate" title={selected.location}>{selected.location || 'Not set'}</div>
+                      <div className="text-[13px] text-gray-600 truncate" title={selected.location ?? undefined}>{selected.location || 'Not set'}</div>
                     </div>
                     <div>
                       <div className="text-[13px] font-medium text-gray-900 mb-0.5">Manager</div>
@@ -391,69 +457,66 @@ export default function Warehouses() {
               <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex flex-col items-center justify-center h-full">
                 <h3 className="text-[15px] font-bold text-gray-900 self-start mb-0">Live Capacity</h3>
                 
-                <div className="relative flex flex-col items-center justify-center mt-2 w-full max-w-[180px]">
-                  <svg className="w-full h-auto drop-shadow-sm" viewBox="0 0 140 80">
-                    <path d="M 10 70 A 60 60 0 0 1 130 70" fill="none" stroke="#E5E7EB" strokeWidth="14" strokeLinecap="round" />
-                    <path 
-                      d="M 10 70 A 60 60 0 0 1 130 70" 
-                      fill="none" 
-                      stroke="#93C5FD" 
-                      strokeWidth="14" 
-                      strokeLinecap="round" 
-                      strokeDasharray="188.5" 
-                      strokeDashoffset={188.5 * (1 - 0.82)} 
-                      className="transition-all duration-1000 ease-out" 
-                    />
-                  </svg>
-                  <div className="absolute top-[35%] flex flex-col items-center">
-                    <div className="text-[28px] font-extrabold text-gray-900 leading-none">82%</div>
-                    <div className="text-[11px] font-medium text-gray-500 mt-0.5">1450/1770 Units</div>
-                  </div>
-                </div>
-                <div className="text-[12px] font-medium text-gray-500 mt-1">Total Vol: 4500 m³</div>
+                {(() => {
+                  const summary = warehouses.find(w => w.id === selected.id);
+                  const capacity = summary?.capacityUnits ?? null;
+                  const units = summary?.units ?? 0;
+                  const pct = capacity && capacity > 0 ? Math.min(100, Math.round((units / capacity) * 100)) : 0;
+                  return (
+                    <>
+                      <div className="relative flex flex-col items-center justify-center mt-2 w-full max-w-[180px]">
+                        <svg className="w-full h-auto drop-shadow-sm" viewBox="0 0 140 80">
+                          <path d="M 10 70 A 60 60 0 0 1 130 70" fill="none" stroke="#E5E7EB" strokeWidth="14" strokeLinecap="round" />
+                          <path 
+                            d="M 10 70 A 60 60 0 0 1 130 70" 
+                            fill="none" 
+                            stroke="#93C5FD" 
+                            strokeWidth="14" 
+                            strokeLinecap="round" 
+                            strokeDasharray="188.5" 
+                            strokeDashoffset={188.5 * (1 - pct / 100)} 
+                            className="transition-all duration-1000 ease-out" 
+                          />
+                        </svg>
+                        <div className="absolute top-[35%] flex flex-col items-center">
+                          <div className="text-[28px] font-extrabold text-gray-900 leading-none">{pct}%</div>
+                          <div className="text-[11px] font-medium text-gray-500 mt-0.5">
+                            {capacity != null ? `${units.toLocaleString()} / ${capacity.toLocaleString()} Units` : 'No capacity set'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-[12px] font-medium text-gray-500 mt-1">
+                        {capacity != null ? `Total Vol: ${capacity.toLocaleString()} Units` : 'Set capacity in Edit to enable this gauge'}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
 
               {/* 3. Recent Activity */}
               <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
                 <h3 className="text-[15px] font-bold text-gray-900 mb-6">Recent Activity</h3>
                 <div className="space-y-6 relative before:absolute before:inset-0 before:ml-[42px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-[90%] before:top-[5%] before:w-[1px] before:bg-gray-200">
-                   
-                   <div className="relative flex items-start gap-4 md:gap-6">
-                     <div className="text-[11px] font-bold text-gray-400 w-12 text-right shrink-0 mt-1 hidden md:block">7:30 PM</div>
-                     <div className="w-2.5 h-2.5 rounded-full bg-[#93C5FD] ring-4 ring-white z-10 mt-1.5 md:mx-auto shadow-sm"></div>
-                     <div className="flex-1 md:w-1/2">
-                       <div className="text-[13px] font-semibold text-gray-900">Stock In: 120 SKU-A</div>
-                       <div className="text-[11px] text-gray-500 font-medium">Today 1:26</div>
-                     </div>
-                   </div>
-
-                   <div className="relative flex items-start gap-4 md:gap-6">
-                     <div className="text-[11px] font-bold text-gray-400 w-12 text-right shrink-0 mt-1 hidden md:block">7:35 AM</div>
-                     <div className="w-2.5 h-2.5 rounded-full bg-[#FDBA74] ring-4 ring-white z-10 mt-1.5 md:mx-auto shadow-sm"></div>
-                     <div className="flex-1 md:w-1/2">
-                       <div className="text-[13px] font-semibold text-gray-900">Stock Out: 45 SKU-B</div>
-                       <div className="text-[11px] text-gray-500 font-medium">Today at 7:00 AM</div>
-                     </div>
-                   </div>
-
-                   <div className="relative flex items-start gap-4 md:gap-6">
-                     <div className="text-[11px] font-bold text-gray-400 w-12 text-right shrink-0 mt-1 hidden md:block">7:35 PM</div>
-                     <div className="w-2.5 h-2.5 rounded-full bg-[#86EFAC] ring-4 ring-white z-10 mt-1.5 md:mx-auto shadow-sm"></div>
-                     <div className="flex-1 md:w-1/2">
-                       <div className="text-[13px] font-semibold text-gray-900">Inventory Check: Complete</div>
-                       <div className="text-[11px] text-gray-500 font-medium">Today at 2:00 PM</div>
-                     </div>
-                   </div>
-
-                   <div className="relative flex items-start gap-4 md:gap-6">
-                     <div className="text-[11px] font-bold text-gray-400 w-12 text-right shrink-0 mt-1 hidden md:block">7:40 PM</div>
-                     <div className="w-2.5 h-2.5 rounded-full bg-[#93C5FD] ring-4 ring-white z-10 mt-1.5 md:mx-auto shadow-sm"></div>
-                     <div className="flex-1 md:w-1/2">
-                       <div className="text-[13px] font-semibold text-gray-900">Stock In: 120 SKU-A</div>
-                       <div className="text-[11px] text-gray-500 font-medium">Today at 6:00 PM</div>
-                     </div>
-                   </div>
-
+                  {activitiesLoading ? (
+                    <div className="flex justify-center py-10">
+                      <Loader2 className="w-5 h-5 animate-spin text-[#0066CC]" />
+                    </div>
+                  ) : activities.length === 0 ? (
+                    <div className="text-center py-10 text-[13px] font-medium text-gray-500">
+                      No recent movements recorded for this warehouse.
+                    </div>
+                  ) : (
+                    activities.map((a) => (
+                      <div key={a.id} className="relative flex items-start gap-4 md:gap-6">
+                        <div className="text-[11px] font-bold text-gray-400 w-12 text-right shrink-0 mt-1 hidden md:block">{formatTime(a.sub)}</div>
+                        <div className={`w-2.5 h-2.5 rounded-full ${a.color} ring-4 ring-white z-10 mt-1.5 md:mx-auto shadow-sm`}></div>
+                        <div className="flex-1 md:w-1/2">
+                          <div className="text-[13px] font-semibold text-gray-900">{a.title}</div>
+                          <div className="text-[11px] text-gray-500 font-medium">{formatTime(a.sub)}</div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -463,19 +526,27 @@ export default function Warehouses() {
                 <div className="grid grid-cols-2 gap-3 flex-1">
                   <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 flex flex-col justify-center transition-colors hover:bg-gray-100">
                     <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Total SKUs</div>
-                    <div className="text-[24px] font-extrabold text-gray-900 leading-none">1,240</div>
+                    <div className="text-[24px] font-extrabold text-gray-900 leading-none">
+                      {warehouses.find(w => w.id === selected.id)?.skuCount ?? '—'}
+                    </div>
                   </div>
                   <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 flex flex-col justify-center transition-colors hover:bg-gray-100">
                     <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Open Orders</div>
-                    <div className="text-[24px] font-extrabold text-gray-900 leading-none">88</div>
+                    <div className="text-[24px] font-extrabold text-gray-900 leading-none">
+                      {warehouses.find(w => w.id === selected.id)?.openOrderCount ?? '—'}
+                    </div>
                   </div>
                   <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 flex flex-col justify-center transition-colors hover:bg-gray-100">
                     <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Low Stock Alerts</div>
-                    <div className="text-[24px] font-extrabold text-gray-900 leading-none">14</div>
+                    <div className="text-[24px] font-extrabold text-gray-900 leading-none">
+                      {warehouses.find(w => w.id === selected.id)?.lowStockCount ?? '—'}
+                    </div>
                   </div>
                   <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 flex flex-col justify-center transition-colors hover:bg-gray-100">
                     <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Staff On Shift</div>
-                    <div className="text-[24px] font-extrabold text-gray-900 leading-none">8</div>
+                    <div className="text-[24px] font-extrabold text-gray-900 leading-none">
+                      {warehouses.find(w => w.id === selected.id)?.staffCount ?? '—'}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -593,6 +664,20 @@ export default function Warehouses() {
                   type="text"
                   value={form.location}
                   onChange={e => setForm({...form, location: e.target.value})}
+                  className="w-full px-3 py-2 text-[14px] font-medium text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-[#0066CC] focus:ring-2 focus:ring-[#E6F4FF] transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">
+                  Capacity (Units)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={form.capacityUnits}
+                  onChange={e => setForm({...form, capacityUnits: e.target.value})}
+                  placeholder="Total storage capacity in units"
                   className="w-full px-3 py-2 text-[14px] font-medium text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-[#0066CC] focus:ring-2 focus:ring-[#E6F4FF] transition-all"
                 />
               </div>

@@ -3,6 +3,7 @@ import Sidebar from '@/components/Sidebar';
 import TopAppBar from '@/components/TopAppBar';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import RequirePermission from '@/components/RequirePermission';
+import GuestRoute from '@/components/GuestRoute';
 import Login from '@/pages/Login';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
@@ -29,6 +30,7 @@ import Categories from '@/pages/Categories';
 import CategoryCreate from '@/pages/CategoryCreate';
 import Onboarding from '@/pages/Onboarding';
 import Notifications from '@/pages/Notifications';
+import LandingPage from '@/pages/LandingPage';
 
 function AppLayout() {
   const user = useAuthStore((s) => s.user);
@@ -65,17 +67,23 @@ function RootDashboard() {
 }
 
 export default function App() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route element={<GuestRoute />}>
+        {!isAuthenticated && <Route path="/" element={<LandingPage />} />}
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+      </Route>
       
       <Route element={<ProtectedRoute />}>
         <Route path="/onboarding" element={<Onboarding />} />
         
         <Route element={<AppLayout />}>
-          <Route index element={<RootDashboard />} />
+          {isAuthenticated && <Route path="/" element={<RootDashboard />} />}
+          
           <Route element={<RequirePermission permission="sidebar.profile" />}>
             <Route path="profile" element={<Profile />} />
           </Route>

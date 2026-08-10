@@ -42,6 +42,9 @@ interface Warehouse {
   id: string;
   name: string;
   location?: string;
+  units?: number;
+  stockValue?: number;
+  coveragePct?: number;
 }
 
 interface StockMovement {
@@ -266,7 +269,7 @@ export default function Dashboard() {
       movementData,
     ] = await Promise.all([
       safeFetch<LowStockItem[]>(`${API_BASE}/stock-levels/low-stock`, signal),
-      safeFetch<Warehouse[]>(`${API_BASE}/warehouses`, signal),
+      safeFetch<Warehouse[]>(`${API_BASE}/warehouses/summary`, signal),
       safeFetch<{ data?: unknown[] } | unknown[]>(`${API_BASE}/purchase-orders?status=pending_approval&limit=100`, signal),
       safeFetch<{ data?: unknown[] } | unknown[]>(`${API_BASE}/approvals?status=pending&limit=100`, signal),
       safeFetch<StockMovement[]>(`${API_BASE}/inventory/stock-movements?limit=10`, signal),
@@ -471,10 +474,12 @@ export default function Dashboard() {
     );
   }
 
-  // Compute bar chart data from warehouses (mock fill pct until API returns stock values)
-  const barData = warehouses.slice(0, 5).map((wh, i) => ({
+// Compute bar chart data from warehouses (coverage % = stock value vs target stock value)
+  const barData = warehouses.slice(0, 5).map((wh) => ({
+    id: wh.id,
     name: wh.name,
-    pct: Math.max(20, 100 - i * 13),   // will be replaced with real data when available
+    pct: wh.coveragePct ?? 0,
+    units: wh.units ?? 0,
   }));
 
   const getGreeting = () => {
@@ -602,13 +607,13 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="flex gap-6 h-[220px] w-full overflow-x-auto pb-4 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
-              {barData.map((wh, i) => (
-                <div key={i} className="flex flex-col items-center h-full min-w-[60px] shrink-0">
+              {barData.map((wh) => (
+                <div key={wh.id} className="flex flex-col items-center h-full min-w-[60px] shrink-0">
                   <div className="text-gray-500 font-mono font-bold text-[11px] mb-2">{wh.pct}%</div>
                   <div className="w-12 bg-[#E6F4FF] rounded-t-lg flex-1 flex items-end overflow-hidden">
                     <div
                       className="w-full bg-[#0066CC] rounded-t-lg transition-all duration-700"
-                      style={{ height: `${wh.pct}%` }}
+                      style={{ height: `${Math.min(100, wh.pct)}%` }}
                     />
                   </div>
                   <div className="font-bold text-gray-800 text-[12px] truncate w-16 text-center mt-3" title={wh.name}>
