@@ -13,7 +13,6 @@ import {
   Briefcase,
   FileCheck,
   FileText,
-  AlertOctagon,
   Bot,
   Bell,
   LogOut,
@@ -34,7 +33,6 @@ const overviewLinks = [
   { to: '/approvals', label: 'Approvals', icon: FileCheck, perm: 'sidebar.approvals' as const },
   { to: '/purchase-orders', label: 'Purchase Orders', icon: FileText, perm: 'sidebar.purchaseOrders' as const },
   { to: '/negotiations', label: 'Negotiations', icon: FileText, perm: 'sidebar.negotiations' as const },
-  { to: '/anomalies', label: 'Anomalies', icon: AlertOctagon, perm: 'sidebar.anomalies' as const },
   { to: '/users', label: 'Users', icon: Users, perm: 'sidebar.users' as const },
   { to: '/assistant', label: 'Assistant', icon: Bot, perm: 'sidebar.assistant' as const },
 ];

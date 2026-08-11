@@ -14,7 +14,6 @@ const PAGE_SIZE = 15;
 const TYPE_LABELS: { value: string; label: string }[] = [
   { value: '', label: 'All types' },
   { value: 'approval.requested', label: 'Approval requests' },
-  { value: 'anomaly.flagged', label: 'Anomalies' },
   { value: 'lowstock.detected', label: 'Low stock' },
   { value: 'po.received', label: 'Purchase orders' },
   { value: 'vendor.responded', label: 'Vendor offers' },

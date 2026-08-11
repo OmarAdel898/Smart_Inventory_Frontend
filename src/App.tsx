@@ -18,7 +18,6 @@ import Warehouses from '@/pages/Warehouses';
 import WarehouseCreate from '@/pages/WarehouseCreate';
 import Vendors from '@/pages/Vendors';
 import Approvals from '@/pages/Approvals';
-import Anomalies from '@/pages/Anomalies';
 import Negotiations from '@/pages/Negotiations';
 import Assistant, { AssistantChat } from '@/pages/Assistant';
 import PurchaseOrders from '@/pages/PurchaseOrders';
@@ -115,10 +114,6 @@ export default function App() {
           
           <Route element={<RequirePermission permission="sidebar.approvals" />}>
             <Route path="approvals" element={<Approvals />} />
-          </Route>
-          
-          <Route element={<RequirePermission permission="sidebar.anomalies" />}>
-            <Route path="anomalies" element={<Anomalies />} />
           </Route>
           
           <Route element={<RequirePermission permission="sidebar.negotiations" />}>
