@@ -174,6 +174,88 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
                 </div>
               </section>
 
+              {Array.isArray(approval.payload.kbSources) && approval.payload.kbSources.length > 0 && (
+                <section>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="material-symbols-outlined text-gray-700">attach_file</span>
+                    <h4 className="text-headline-sm font-semibold text-gray-900">Knowledge Sources</h4>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(approval.payload.kbSources as Array<{ id: string; sourceType: string; score: number }>).map((src) => (
+                      <button
+                        key={src.id}
+                        onClick={() => navigator.clipboard.writeText(src.id)}
+                        title={`${(src.score * 100).toFixed(1)}% match \u2022 ${src.id} (click to copy)`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-secondary/30 bg-secondary/5 text-label-lg font-semibold text-secondary hover:bg-secondary/10 transition-colors"
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>attach_file</span>
+                        {src.sourceType.replace(/_/g, ' ')}
+                        <span className="font-mono-data text-[10px] text-on-surface-variant">
+                          {(src.score * 100).toFixed(1)}%
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-2 italic">
+                    Documents the agent anchored its decision on. Click a source to copy its ID.
+                  </p>
+                </section>
+              )}
+
+              {approval.agentType === 'negotiation' && (
+                <section>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="material-symbols-outlined text-gray-700">swap_horiz</span>
+                    <h4 className="text-headline-sm font-semibold text-gray-900">Deal Terms & Composite Value</h4>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="p-3 bg-white border border-gray-200 rounded-lg">
+                      <p className="text-label-md text-gray-500 uppercase mb-1">Requested Discount</p>
+                      <p className="text-body-lg font-semibold">
+                        {approval.payload.finalDiscountPercent != null
+                          ? `${approval.payload.finalDiscountPercent}% (final)`
+                          : `${approval.payload.requestedDiscountPercent ?? 0}%`}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-white border border-gray-200 rounded-lg">
+                      <p className="text-label-md text-gray-500 uppercase mb-1">Payment Terms</p>
+                      <p className="text-body-lg font-semibold">
+                        net-{approval.payload.paymentTermsDays ?? 30}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-white border border-gray-200 rounded-lg">
+                      <p className="text-label-md text-gray-500 uppercase mb-1">Shipping Cost</p>
+                      <p className="text-body-lg font-semibold">
+                        {Number(approval.payload.shippingCost) === 0 ? 'Vendor covers' : `$${approval.payload.shippingCost ?? 50}`}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-white border border-gray-200 rounded-lg">
+                      <p className="text-label-md text-gray-500 uppercase mb-1">Value Score</p>
+                      <p className="text-body-lg font-semibold text-green-600">
+                        {approval.payload.valueScore != null ? `${approval.payload.valueScore}/100` : '\u2014'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {approval.payload.composite && (
+                    <div className="bg-secondary/5 border border-secondary/20 rounded-lg p-4">
+                      <p className="text-label-md text-gray-500 uppercase mb-2">Composite Value Breakdown</p>
+                      <div className="grid grid-cols-2 gap-2 text-body-md">
+                        <div className="flex justify-between"><span className="text-gray-600">Order value</span><span className="font-semibold">${Number((approval.payload.composite as any).orderValue || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-600">Discount savings</span><span className="font-semibold text-green-700">${Number((approval.payload.composite as any).discountValueUSD || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-600">Term float value</span><span className="font-semibold text-green-700">${Number((approval.payload.composite as any).floatValueUSD || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-600">Shipping savings</span><span className="font-semibold text-green-700">${Number((approval.payload.composite as any).shippingSavingsUSD || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>
+                        <div className="col-span-2 flex justify-between border-t border-secondary/20 pt-2">
+                          <span className="font-semibold">Total composite value</span>
+                          <span className="font-semibold text-green-700">${Number((approval.payload.composite as any).compositeValueUSD || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
+
               <section>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-headline-sm font-semibold text-gray-900">Request Payload</h4>
