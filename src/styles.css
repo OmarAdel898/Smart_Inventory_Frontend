@@ -148,7 +148,7 @@ body {
   position: absolute;
   inset: -4px;
   border-radius: 50%;
-  border: 2px solid #2E6F6E;
+  border: 2px solid #0066CC;
   animation: fabRing 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
@@ -163,7 +163,7 @@ body {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #76777e;
+  background: #3b82f6;
   animation: typingBounce 1.4s infinite ease-in-out both;
 }
 .typing-dot:nth-child(1) { animation-delay: 0s; }

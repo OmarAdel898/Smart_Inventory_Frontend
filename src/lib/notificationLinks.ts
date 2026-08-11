@@ -1,6 +1,5 @@
 import type { Notification, NotificationType } from '@/api/notifications';
 import {
-  AlertOctagon,
   AlertTriangle,
   FileCheck,
   Handshake,
@@ -11,7 +10,6 @@ import {
 
 const LINK_ROUTES: Record<NotificationType, string> = {
   'approval.requested': '/approvals',
-  'anomaly.flagged': '/anomalies',
   'lowstock.detected': '/inventory',
   'po.received': '/purchase-orders',
   'vendor.responded': '/negotiations',
@@ -24,9 +22,6 @@ export function getNotificationLink(notification: Notification): string {
   switch (notification.type) {
     case 'approval.requested': {
       return LINK_ROUTES['approval.requested'];
-    }
-    case 'anomaly.flagged': {
-      return LINK_ROUTES['anomaly.flagged'];
     }
     case 'lowstock.detected': {
       const skuId = typeof d.skuId === 'string' ? d.skuId : '';
@@ -48,8 +43,6 @@ export function getNotificationIcon(type: NotificationType): { icon: LucideIcon;
   switch (type) {
     case 'approval.requested':
       return { icon: FileCheck, className: 'bg-amber-50 text-amber-600' };
-    case 'anomaly.flagged':
-      return { icon: AlertOctagon, className: 'bg-red-50 text-[#B30024]' };
     case 'lowstock.detected':
       return { icon: PackageMinus, className: 'bg-amber-50 text-amber-600' };
     case 'po.received':

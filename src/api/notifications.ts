@@ -6,7 +6,6 @@ export type NotificationSeverity = 'info' | 'warning' | 'critical';
 
 export type NotificationType =
   | 'approval.requested'
-  | 'anomaly.flagged'
   | 'lowstock.detected'
   | 'po.received'
   | 'vendor.responded';
