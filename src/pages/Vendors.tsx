@@ -18,11 +18,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks/useCan';
 
+type VendorTier = 'tier1' | 'tier2' | 'tier3';
+
 type Vendor = {
   id: string;
   name: string;
   contactEmail: string | null;
   contactPhone: string | null;
+  tier: VendorTier;
   createdAt: string;
   updatedAt: string;
 };
@@ -49,6 +52,24 @@ function formatDate(value: string): string {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date);
+}
+
+const TIER_META: Record<VendorTier, { label: string; hint: string; badge: string }> = {
+  tier1: { label: 'Tier 1', hint: 'Strategic — bulk orders only (min $1,000)', badge: 'bg-[#F0E6FF] text-[#6500E6]' },
+  tier2: { label: 'Tier 2', hint: 'Standard', badge: 'bg-gray-100 text-gray-700' },
+  tier3: { label: 'Tier 3', hint: 'Commodity — harder terms', badge: 'bg-amber-100 text-amber-800' },
+};
+
+function TierBadge({ tier }: { tier: VendorTier }) {
+  const meta = TIER_META[tier] || TIER_META.tier2;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${meta.badge}`}
+      title={meta.hint}
+    >
+      {meta.label}
+    </span>
+  );
 }
 
 function CellValue({ children }: { children: string | null }) {
@@ -122,7 +143,7 @@ export default function Vendors() {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const [form, setForm] = useState({ name: '', contactEmail: '', contactPhone: '' });
+  const [form, setForm] = useState({ name: '', contactEmail: '', contactPhone: '', tier: 'tier2' as VendorTier });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formServerErr, setFormServerErr] = useState<string | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
@@ -185,7 +206,7 @@ export default function Vendors() {
   }, []);
 
   const openCreateModal = () => {
-    setForm({ name: '', contactEmail: '', contactPhone: '' });
+    setForm({ name: '', contactEmail: '', contactPhone: '', tier: 'tier2' });
     setFormErrors({});
     setFormServerErr(null);
     setModal({ open: true, mode: 'create', id: null });
@@ -196,6 +217,7 @@ export default function Vendors() {
       name: vendor.name,
       contactEmail: vendor.contactEmail || '',
       contactPhone: vendor.contactPhone || '',
+      tier: vendor.tier || 'tier2',
     });
     setFormErrors({});
     setFormServerErr(null);
@@ -235,6 +257,7 @@ export default function Vendors() {
       name: form.name.trim(),
       contactEmail: form.contactEmail.trim() || null,
       contactPhone: form.contactPhone.trim() || null,
+      tier: form.tier,
     };
 
     try {
@@ -406,6 +429,7 @@ export default function Vendors() {
               <thead>
                 <tr className="border-b border-gray-100 bg-white">
                   <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Name</th>
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Tier</th>
                   <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Contact Email</th>
                   <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Contact Phone</th>
                   <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap hidden md:table-cell">Updated At</th>
@@ -429,6 +453,9 @@ export default function Vendors() {
                           <span className="text-[12px] font-medium text-gray-500 leading-tight truncate max-w-[200px] mt-0.5">ID: {vendor.id.slice(0,8).toUpperCase()}</span>
                         </div>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 align-middle">
+                      <TierBadge tier={vendor.tier} />
                     </td>
                     <td className="px-6 py-4 align-middle text-[13px] font-medium text-gray-600">
                       {vendor.contactEmail || '\u2014'}
@@ -548,6 +575,27 @@ export default function Vendors() {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
+                  <label htmlFor="vendor-tier" className="text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                    Tier
+                  </label>
+                  <select
+                    id="vendor-tier"
+                    value={form.tier}
+                    onChange={(e) => setForm({ ...form, tier: e.target.value as VendorTier })}
+                    className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 outline-none transition-colors focus:ring-accent/20"
+                  >
+                    {(Object.keys(TIER_META) as VendorTier[]).map((t) => (
+                      <option key={t} value={t}>
+                        {TIER_META[t].label} — {TIER_META[t].hint}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-gray-500">
+                    Tier drives negotiation caps and the bulk-order rule (Tier 1 requires min $1,000 orders).
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
                   <label htmlFor="vendor-phone" className="text-xs font-semibold text-gray-900 uppercase tracking-wider">
                     Contact Phone
                   </label>
@@ -615,6 +663,15 @@ export default function Vendors() {
                   <div>
                     <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Vendor ID</dt>
                     <dd className="mt-1 text-xs font-mono text-gray-500">{detailVendor.id}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Tier</dt>
+                    <dd className="mt-1.5">
+                      <div className="flex items-center gap-2">
+                        <TierBadge tier={detailVendor.tier} />
+                        <span className="text-xs text-gray-500">{TIER_META[detailVendor.tier]?.hint}</span>
+                      </div>
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Contact Email</dt>
