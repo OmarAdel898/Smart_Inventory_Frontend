@@ -221,7 +221,7 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
                     <div className="p-3 bg-white border border-gray-200 rounded-lg">
                       <p className="text-label-md text-gray-500 uppercase mb-1">Payment Terms</p>
                       <p className="text-body-lg font-semibold">
-                        net-{approval.payload.paymentTermsDays ?? 30}
+                        net-{Number(approval.payload.paymentTermsDays ?? 30)}
                       </p>
                     </div>
                     <div className="p-3 bg-white border border-gray-200 rounded-lg">
@@ -238,7 +238,7 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
                     </div>
                   </div>
 
-                  {approval.payload.composite && (
+                  {approval.payload.composite != null && (
                     <div className="bg-secondary/5 border border-secondary/20 rounded-lg p-4">
                       <p className="text-label-md text-gray-500 uppercase mb-2">Composite Value Breakdown</p>
                       <div className="grid grid-cols-2 gap-2 text-body-md">
