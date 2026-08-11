@@ -579,8 +579,8 @@ export default function Inventory() {
                   <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Name</th>
                   <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Status</th>
                   <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Date Updated</th>
-                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Warehouse</th>
-                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Total Sales</th>
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Unit Cost</th>
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Selling Price</th>
                   <th className="px-6 py-4 w-12"></th>
                 </tr>
               </thead>
@@ -614,7 +614,7 @@ export default function Inventory() {
                         {new Date(s.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).toLowerCase()}
                       </td>
                       <td className="px-6 py-4 align-middle text-[13px] font-medium text-gray-600">
-                        {Math.floor(s.cost)} in Stock
+                        {formatCurrency(s.cost)}
                       </td>
                       <td className="px-6 py-4 align-middle text-[13px] font-semibold text-gray-900">
                         {formatCurrency(s.price)}
