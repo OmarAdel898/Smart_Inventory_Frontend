@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Send,
   ShieldCheck,
+  Star,
   XCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,6 +33,8 @@ export type PurchaseOrder = {
   createdBy: string;
   negotiationRunId: string | null;
   lineItems: LineItem[];
+  receiptRating: number | null;
+  damagedUnits: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -109,10 +112,14 @@ export default function PurchaseOrderDetail() {
   const [error, setError] = useState<string | null>(null);
   const [transitioning, setTransitioning] = useState<string | null>(null);
   const [transitionError, setTransitionError] = useState<string | null>(null);
+  const [ratingStars, setRatingStars] = useState(0);
+  const [damagedUnits, setDamagedUnits] = useState('');
 
   const loadOrder = async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
+    setRatingStars(0);
+    setDamagedUnits('');
 
     try {
       const token = getToken();
@@ -137,7 +144,7 @@ export default function PurchaseOrderDetail() {
     }
   };
 
-  const handleTransition = async (toStatus: string) => {
+  const handleTransition = async (toStatus: string, rating?: { ratingStars?: number; damagedUnits?: number }) => {
     setTransitioning(toStatus);
     setTransitionError(null);
 
@@ -149,7 +156,7 @@ export default function PurchaseOrderDetail() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ status: toStatus }),
+        body: JSON.stringify({ status: toStatus, ...rating }),
       });
 
       if (!response.ok) {
@@ -314,6 +321,29 @@ export default function PurchaseOrderDetail() {
         </div>
       )}
 
+      {/* Stored Receipt Rating Banner */}
+      {order.status === 'received' && order.receiptRating != null && (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <div className="flex items-center gap-0.5">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Star
+                key={star}
+                className={`h-4 w-4 ${star <= order.receiptRating! ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`}
+              />
+            ))}
+          </div>
+          <span>
+            Receiving staff rated this delivery <strong>{Number(order.receiptRating)}/5</strong>
+            {Number(order.damagedUnits || 0) > 0 && (
+              <>
+                {' '}
+                — <strong>{Number(order.damagedUnits)}</strong> damaged unit(s) reported
+              </>
+            )}
+          </span>
+        </div>
+      )}
+
       {/* Status Transition Action Buttons Bar */}
       {availableTransitions.length > 0 && (
         <Card className="border-gray-200 shadow-sm bg-white">
@@ -325,6 +355,89 @@ export default function PurchaseOrderDetail() {
           <CardContent className="p-4 flex flex-wrap gap-3">
             {availableTransitions.map((t) => {
               const IconComp = t.icon;
+
+              if (t.to === 'received') {
+                return (
+                  <div
+                    key={t.to}
+                    className="w-full border border-blue-200 bg-blue-50/40 rounded-lg p-3 flex flex-col gap-2.5"
+                  >
+                    <div className="flex items-center flex-wrap gap-x-3 gap-y-2">
+                      <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Receiving feedback
+                      </span>
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                            onClick={() => setRatingStars(star)}
+                            disabled={transitioning !== null}
+                            className="p-0.5"
+                          >
+                            <Star
+                              className={`h-5 w-5 transition-colors ${
+                                star <= ratingStars
+                                  ? 'fill-amber-400 text-amber-400'
+                                  : 'text-gray-300 hover:text-amber-300'
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        type="number"
+                        min={0}
+                        placeholder="Damaged units"
+                        value={damagedUnits}
+                        onChange={(e) => setDamagedUnits(e.target.value)}
+                        disabled={transitioning !== null}
+                        className="w-28 h-8 px-2.5 text-sm rounded-lg border border-gray-200 bg-white focus:border-[#0066CC] focus:ring-1 focus:ring-[#0066CC]/30 outline-none"
+                      />
+                      <div className="flex items-center gap-2 ml-auto">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setRatingStars(0);
+                            setDamagedUnits('');
+                          }}
+                          disabled={transitioning !== null}
+                        >
+                          Clear
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={() =>
+                            handleTransition('received', {
+                              ...(ratingStars > 0 ? { ratingStars } : {}),
+                              ...(damagedUnits !== ''
+                                ? { damagedUnits: Math.max(0, Math.floor(Number(damagedUnits) || 0)) }
+                                : {}),
+                            })
+                          }
+                          disabled={transitioning !== null}
+                        >
+                          {transitioning === 'received' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4" />
+                          )}
+                          Receive & Rate
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-gray-500">
+                      Rating and damage feed the Feedback Agent's vendor review — written into the
+                      knowledge base as searchable content.
+                    </p>
+                  </div>
+                );
+              }
+
               return (
                 <Button
                   key={t.to}
