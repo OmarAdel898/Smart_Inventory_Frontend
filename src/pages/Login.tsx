@@ -191,7 +191,13 @@ export default function Login() {
                 <span className="relative bg-white px-2 text-xs text-gray-500 uppercase tracking-wide">Or continue with</span>
               </div>
               <div className="flex">
-                <Button variant="outline" className="flex-1 gap-2"><GoogleIcon /> Google</Button>
+                <Button 
+                  variant="outline" 
+                  className="flex-1 gap-2 cursor-pointer hover:bg-gray-50 transition-colors"
+                  onClick={() => { window.location.href = 'http://localhost:3000/auth/google'; }}
+                >
+                  <GoogleIcon /> Continue with Google
+                </Button>
               </div>
             </>
           ) : (

@@ -5,6 +5,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import RequirePermission from '@/components/RequirePermission';
 import GuestRoute from '@/components/GuestRoute';
 import Login from '@/pages/Login';
+import AuthCallback from '@/pages/AuthCallback';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import Dashboard from '@/pages/Dashboard';
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
       </Route>
+      <Route path="/auth/callback" element={<AuthCallback />} />
       
       <Route element={<ProtectedRoute />}>
         <Route path="/onboarding" element={<Onboarding />} />

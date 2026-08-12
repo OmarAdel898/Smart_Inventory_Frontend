@@ -18,8 +18,6 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
   const [rejecting, setRejecting] = useState(false);
   const [negotiating, setNegotiating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [editedPayloadRaw, setEditedPayloadRaw] = useState('');
-  const [copied, setCopied] = useState(false);
   const user = useAuthStore((s) => s.user);
   const { can } = usePermissions();
   const canApprove = can('approvals.approve');
@@ -31,14 +29,8 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
     setApproving(true);
     setError(null);
     try {
-      let editedPayload: object | undefined;
-      if (editedPayloadRaw.trim()) {
-        try { editedPayload = JSON.parse(editedPayloadRaw); }
-        catch { throw new Error('Invalid JSON in payload edit'); }
-      }
       const result = await approveApproval(approval.id, {
         reviewedBy: user?.id || '',
-        ...(editedPayload ? { editedPayload } : {}),
       });
       onStatusChanged(approval.id, 'approved');
       onApproved?.(approval, result.data?.createdPoIds ?? []);
@@ -48,7 +40,7 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
     } finally {
       setApproving(false);
     }
-  }, [approval, editedPayloadRaw, user, onStatusChanged, onApproved, onClose]);
+  }, [approval, user, onStatusChanged, onApproved, onClose]);
 
   const handleReject = useCallback(async () => {
     if (!approval) return;
@@ -79,15 +71,6 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
       setNegotiating(false);
     }
   }, [approval, user, onStatusChanged, onClose]);
-
-  const handleCopy = useCallback(async () => {
-    if (!approval) return;
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(approval.payload, null, 2));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch { /* ignore */ }
-  }, [approval]);
 
   const proposedValue = approval ? getProposedValue(approval.payload) : 0;
   const confidenceScore = approval ? getConfidenceScore(approval.payload) : 0;
@@ -256,43 +239,6 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
                 </section>
               )}
 
-              <section>
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-headline-sm font-semibold text-gray-900">Request Payload</h4>
-                  <button onClick={handleCopy} className="text-gray-700 text-label-lg uppercase tracking-wide hover:underline">
-                    {copied ? 'Copied' : 'Copy JSON'}
-                  </button>
-                </div>
-                <div className="bg-[#0066CC] text-gray-700-fixed-dim font-mono-data text-[13px] p-4 rounded-lg overflow-x-auto leading-relaxed border border-primary-container shadow-inner">
-                  <pre className="whitespace-pre-wrap">{JSON.stringify(approval.payload, null, 2)}</pre>
-                </div>
-              </section>
-
-              <section>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-headline-sm font-semibold text-gray-900">Approval Comments / Payload Edit</h4>
-                    {!canEditPayload && (
-                      <span className="material-symbols-outlined text-[18px] text-outline">lock</span>
-                    )}
-                  </div>
-                </div>
-                {canEditPayload ? (
-                  <textarea
-                    value={editedPayloadRaw}
-                    onChange={(e) => setEditedPayloadRaw(e.target.value)}
-                    className="w-full h-32 bg-gray-50-low border border-gray-200 rounded-lg p-4 text-body-md focus:ring-secondary focus:border-secondary transition-all resize-none font-mono-data text-[13px]"
-                    placeholder='Optional: Enter JSON to merge into the payload, e.g. {"priority": "HIGH"}'
-                  />
-                ) : (
-                  <div className="w-full h-32 bg-gray-50/50 border border-gray-200 rounded-lg p-4 font-mono-data text-[13px] text-gray-900/70 overflow-y-auto">
-                    <pre className="whitespace-pre-wrap">{JSON.stringify(approval.payload, null, 2)}</pre>
-                  </div>
-                )}
-                <p className="text-[11px] text-gray-500 mt-2 italic">
-                  Submitting with edits will re-run agent validation before execution.
-                </p>
-              </section>
             </div>
 
             {approval.status === 'pending' && (canApprove || canReject) ? (
