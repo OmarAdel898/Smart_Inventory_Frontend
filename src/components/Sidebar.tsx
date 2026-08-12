@@ -62,25 +62,18 @@ export default function Sidebar() {
       className={`shrink-0 h-screen border-r border-gray-100 bg-white flex flex-col z-40 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-[84px]' : 'w-64'}`}
     >
       {/* Top Header */}
-      <div className={`flex items-center px-4 py-6 mb-2 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+      <div className={`flex items-center px-4 py-6 mb-2 relative ${isCollapsed ? 'justify-center' : 'justify-center'}`}>
         <div 
-          className={`flex items-center gap-3 overflow-hidden whitespace-nowrap ${isCollapsed ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+          className={`flex items-center justify-center overflow-hidden whitespace-nowrap w-full ${isCollapsed ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
           onClick={() => isCollapsed && setIsCollapsed(false)}
           title={isCollapsed ? "Expand Sidebar" : undefined}
         >
-          <div className="w-10 h-10 shrink-0 rounded-xl bg-[#0066CC] flex items-center justify-center text-white font-black text-lg shadow-sm">
-            S
-          </div>
-          {!isCollapsed && (
-            <span className="text-[20px] font-black text-gray-900 tracking-tight transition-opacity duration-300">
-              StockSavvy
-            </span>
-          )}
+          <img src="/stocksavvy_logo.png" alt="StockSavvy Logo" className={`shrink-0 object-contain transition-all duration-300 ${isCollapsed ? 'w-10 h-10' : 'w-40 h-14'}`} />
         </div>
         {!isCollapsed && (
           <button 
             onClick={() => setIsCollapsed(true)} 
-            className="text-gray-400 hover:text-gray-900 transition-colors p-1"
+            className="absolute right-4 text-gray-400 hover:text-gray-900 transition-colors p-1"
           >
             <Menu className="w-6 h-6" />
           </button>

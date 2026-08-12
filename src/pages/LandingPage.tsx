@@ -186,9 +186,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo(0,0)}>
-              <div className="w-10 h-10 shrink-0 rounded-xl bg-[#0066CC] flex items-center justify-center text-white font-black text-lg shadow-sm">
-                S
-              </div>
+              <img src="/stocksavvy_logo.png" alt="StockSavvy Logo" className="w-10 h-10 shrink-0 object-contain" />
               <span className="text-[20px] font-black text-gray-900 tracking-tight">StockSavvy</span>
             </div>
             
@@ -565,9 +563,7 @@ export default function LandingPage() {
       <footer className="bg-white border-t border-slate-200 py-12 mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo(0,0)}>
-             <div className="w-8 h-8 shrink-0 rounded-lg bg-[#0066CC] flex items-center justify-center text-white font-black text-sm shadow-sm">
-                S
-              </div>
+             <img src="/stocksavvy_logo.png" alt="StockSavvy Logo" className="w-8 h-8 shrink-0 object-contain" />
             <span className="font-black text-xl text-slate-900 tracking-tight">StockSavvy</span>
           </div>
           <p className="text-slate-500 font-medium">© {new Date().getFullYear()} StockSavvy. All rights reserved.</p>

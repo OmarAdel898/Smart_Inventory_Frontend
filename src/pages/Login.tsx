@@ -113,13 +113,10 @@ export default function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-[440px] bg-white rounded-3xl shadow-sm border border-gray-200 p-8 sm:p-10">
-        <div className="flex items-center gap-3 mb-8 justify-center">
-          <div className="w-10 h-10 bg-[#0066CC] text-white rounded-xl flex items-center justify-center shadow-sm">
-            <span className="material-symbols-outlined">inventory_2</span>
-          </div>
-          <span className="text-2xl font-semibold text-gray-900 tracking-tight">StockSavvy</span>
+        <div className="flex items-center justify-center mb-8">
+          <img src="/stocksavvy_logo.png" alt="StockSavvy Logo" className="h-20 w-auto shrink-0 object-contain" />
         </div>
-          <div className="mb-6">
+          <div className="mb-6 text-center">
             <h2 className="text-2xl font-semibold text-gray-900 mb-1">{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
             <p className="text-sm text-gray-500">{mode === 'login' ? 'Please enter your details to sign in.' : 'Join 2,000+ companies managing smarter inventory.'}</p>
           </div>
