@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { fetchApprovals, approveApproval, rejectApproval } from '@/api/approvals';
 import type { Approval } from '@/pages/ApprovalQueue/types';
 import { useAuthStore } from '@/store/authStore';
@@ -12,6 +12,13 @@ export default function Negotiations() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const user = useAuthStore((s) => s.user);
+  const [skus, setSkus] = useState<{ id: string; name: string }[]>([]);
+
+  const skuMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    skus.forEach(s => { map[s.id] = s.name; });
+    return map;
+  }, [skus]);
 
   useEffect(() => {
     loadNegotiations();
@@ -20,11 +27,21 @@ export default function Negotiations() {
   async function loadNegotiations() {
     try {
       setLoading(true);
-      const res = await fetchApprovals({ agentType: 'negotiation', limit: 50 });
+      const tokenMatch = document.cookie.match(/(?:^|;\s*)token=([^;]*)/);
+      const token = tokenMatch ? decodeURIComponent(tokenMatch[1]) : null;
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+      const [res, skusRes] = await Promise.all([
+        fetchApprovals({ agentType: 'negotiation', limit: 50 }),
+        fetch('http://localhost:3000/sku', { headers })
+      ]);
       const pending = res.data.filter(a => a.status === 'pending');
       setNegotiations(pending);
       if (pending.length > 0 && !selectedId) {
         setSelectedId(pending[0].id);
+      }
+      if (skusRes.ok) {
+        const skusBody = await skusRes.json();
+        setSkus(skusBody?.data || (Array.isArray(skusBody) ? skusBody : []));
       }
       setError('');
     } catch (err: any) {
@@ -140,7 +157,7 @@ export default function Negotiations() {
                 
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <span className="material-symbols-outlined text-[16px] opacity-70">inventory_2</span>
-                  <p className="truncate">SKU: {neg.payload?.skuId as string || 'Multiple'}</p>
+                  <p className="truncate">SKU: {skuMap[neg.payload?.skuId as string] || neg.payload?.skuId as string || 'Multiple'}</p>
                 </div>
               </button>
             );

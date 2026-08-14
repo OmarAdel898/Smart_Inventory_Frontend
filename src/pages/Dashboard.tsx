@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -230,11 +230,24 @@ export default function Dashboard() {
 
   const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [skus, setSkus] = useState<{ id: string; name: string }[]>([]);
   const [pendingPoCount, setPendingPoCount] = useState(0);
   const [approvalCount, setApprovalCount] = useState(0);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const skuMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    skus.forEach((s) => { map[s.id] = s.name; });
+    return map;
+  }, [skus]);
+
+  const warehouseMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    warehouses.forEach((w) => { map[w.id] = w.name; });
+    return map;
+  }, [warehouses]);
 
   // Pagination & Search for Low Stock
   const [searchTerm, setSearchTerm] = useState('');
@@ -267,16 +280,19 @@ export default function Dashboard() {
       poData,
       approvalData,
       movementData,
+      skuData,
     ] = await Promise.all([
       safeFetch<LowStockItem[]>(`${API_BASE}/stock-levels/low-stock`, signal),
       safeFetch<Warehouse[]>(`${API_BASE}/warehouses/summary`, signal),
       safeFetch<{ data?: unknown[] } | unknown[]>(`${API_BASE}/purchase-orders?status=pending_approval&limit=100`, signal),
       safeFetch<{ data?: unknown[] } | unknown[]>(`${API_BASE}/approvals?status=pending&limit=100`, signal),
       safeFetch<StockMovement[]>(`${API_BASE}/inventory/stock-movements?limit=10`, signal),
+      safeFetch<{ id: string; name: string }[]>(`${API_BASE}/sku`, signal),
     ]);
 
     setLowStock(Array.isArray(lowStockData) ? lowStockData : []);
     setWarehouses(Array.isArray(warehouseData) ? warehouseData : []);
+    setSkus(Array.isArray(skuData) ? skuData : (skuData as any)?.data || []);
 
     // PO count — handle both paginated and array responses
     if (Array.isArray(poData)) {
@@ -728,11 +744,11 @@ export default function Dashboard() {
                       className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors last:border-0 group"
                     >
                       <td className="px-6 py-4 align-middle">
-                        <p className="font-bold text-[14px] text-gray-900 leading-tight">{item.skuName || '—'}</p>
+                        <p className="font-bold text-[14px] text-gray-900 leading-tight">{item.skuName || skuMap[item.skuId] || '—'}</p>
                         <p className="text-[12px] text-gray-500 font-mono font-medium mt-0.5">{item.skuId.slice(0, 8)}…</p>
                       </td>
                       <td className="px-6 py-4 align-middle text-[13px] text-gray-700 font-semibold">
-                        {item.warehouseName || item.warehouseId.slice(0, 8)}
+                        {item.warehouseName || warehouseMap[item.warehouseId] || item.warehouseId.slice(0, 8)}
                       </td>
                       <td className="px-6 py-4 align-middle text-right font-black text-[#B30024] font-mono text-[15px]">
                         {item.quantity}
@@ -854,11 +870,11 @@ export default function Dashboard() {
                       <span className="font-mono text-[13px] font-semibold text-gray-700 whitespace-nowrap">{formatDate(m.createdAt)}</span>
                     </td>
                     <td className="px-6 py-4 align-middle">
-                      <p className="font-bold text-[14px] text-gray-900 leading-tight">{m.skuName || '—'}</p>
+                      <p className="font-bold text-[14px] text-gray-900 leading-tight">{m.skuName || skuMap[m.skuId] || '—'}</p>
                       <p className="text-[12px] text-gray-500 font-mono font-medium mt-0.5">{m.skuId.slice(0, 8)}…</p>
                     </td>
                     <td className="px-6 py-4 align-middle text-[13px] text-gray-700 font-semibold">
-                      {m.warehouseName || m.warehouseId.slice(0, 8)}
+                      {m.warehouseName || warehouseMap[m.warehouseId] || m.warehouseId.slice(0, 8)}
                     </td>
                     <td className="px-6 py-4 align-middle">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${getReasonColor(m.reason)}`}>
@@ -918,7 +934,7 @@ export default function Dashboard() {
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
               <h2 className="text-[18px] font-bold text-gray-900 flex items-center gap-2">
                 <SlidersHorizontal className="h-5 w-5 text-gray-400" />
-                Set Thresholds: {thresholdItem.skuName || thresholdItem.skuId.slice(0, 8)}
+                Set Thresholds: {thresholdItem.skuName || skuMap[thresholdItem.skuId] || thresholdItem.skuId.slice(0, 8)}
               </h2>
               <button
                 onClick={() => {

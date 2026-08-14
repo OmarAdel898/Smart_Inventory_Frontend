@@ -63,6 +63,7 @@ export default function Inventory() {
   const [skus, setSkus] = useState<SkuItem[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
+  const [warehouses, setWarehouses] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -98,6 +99,8 @@ export default function Inventory() {
   const [stockLevels, setStockLevels] = useState<any[]>([]);
   const [loadingStockLevels, setLoadingStockLevels] = useState(false);
   const [savingThreshold, setSavingThreshold] = useState(false);
+  const [initWarehouseId, setInitWarehouseId] = useState('');
+  const [initializingStock, setInitializingStock] = useState(false);
   const [selectedStockLevel, setSelectedStockLevel] = useState<any | null>(null);
   const [thresholdForm, setThresholdForm] = useState({
     reorderThreshold: 0,
@@ -147,9 +150,10 @@ export default function Inventory() {
     try {
       const token = getToken();
       const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-      const [catRes, venRes] = await Promise.all([
+      const [catRes, venRes, whRes] = await Promise.all([
         fetch(`${API_BASE}/categories`, { headers, signal }),
-        fetch(`${API_BASE}/vendors`, { headers, signal })
+        fetch(`${API_BASE}/vendors`, { headers, signal }),
+        fetch(`${API_BASE}/warehouses`, { headers, signal })
       ]);
       if (catRes.ok) {
         const catBody = await catRes.json();
@@ -158,6 +162,10 @@ export default function Inventory() {
       if (venRes.ok) {
         const venBody = await venRes.json();
         setVendors(venBody?.data || (Array.isArray(venBody) ? venBody : []));
+      }
+      if (whRes.ok) {
+        const whBody = await whRes.json();
+        setWarehouses(whBody?.data || (Array.isArray(whBody) ? whBody : []));
       }
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return;
@@ -171,6 +179,12 @@ export default function Inventory() {
     void loadRelations(controller.signal);
     return () => controller.abort();
   }, []);
+
+  const warehouseMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    warehouses.forEach(w => { map[w.id] = w.name; });
+    return map;
+  }, [warehouses]);
 
   const filteredSkus = useMemo(() => {
     return skus.filter((s) => {
@@ -366,19 +380,21 @@ export default function Inventory() {
           const whBody = await whRes.json();
           const warehouses = whBody?.data || (Array.isArray(whBody) ? whBody : []);
 
-          for (const wh of warehouses) {
-            // A zero-quantity movement auto-creates the stock level row in the backend
-            await fetch(`${API_BASE}/inventory/stock-movements`, {
-              method: 'POST',
-              headers: authHeaders,
-              body: JSON.stringify({
-                skuId: sku.id,
-                warehouseId: wh.id,
-                quantityChange: 0,
-                reason: 'manual_adjustment',
-                note: 'Auto-initialized stock level for threshold configuration',
-              }),
-            });
+          if (warehouseFilter !== 'All Warehouses') {
+            const wh = warehouses.find((w: any) => w.id === warehouseFilter);
+            if (wh) {
+              await fetch(`${API_BASE}/inventory/stock-movements`, {
+                method: 'POST',
+                headers: authHeaders,
+                body: JSON.stringify({
+                  skuId: sku.id,
+                  warehouseId: wh.id,
+                  quantityChange: 0,
+                  reason: 'manual_adjustment',
+                  note: 'Auto-initialized stock level for threshold configuration',
+                }),
+              });
+            }
           }
 
           // Re-fetch stock levels
@@ -434,6 +450,48 @@ export default function Inventory() {
       showToast(err instanceof Error ? err.message : 'Error updating thresholds', 'error');
     } finally {
       setSavingThreshold(false);
+    }
+  };
+
+  const handleInitializeStock = async (warehouseId: string) => {
+    if (!thresholdSku || !warehouseId) return;
+    setInitializingStock(true);
+    try {
+      const token = getToken();
+      const authHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+
+      const res = await fetch(`${API_BASE}/inventory/stock-movements`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          skuId: thresholdSku.id,
+          warehouseId,
+          quantityChange: 0,
+          reason: 'manual_adjustment',
+          note: 'Auto-initialized stock level for threshold configuration',
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to initialize stock level');
+
+      // Re-fetch stock levels
+      const levelsRes = await fetch(`${API_BASE}/stock-levels?skuId=${thresholdSku.id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (levelsRes.ok) {
+        const body = await levelsRes.json();
+        const items = body.success && Array.isArray(body.data) ? body.data : Array.isArray(body.data?.items) ? body.data.items : [];
+        setStockLevels(items);
+      }
+      setInitWarehouseId('');
+      showToast('Stock level initialized successfully', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Error initializing stock level', 'error');
+    } finally {
+      setInitializingStock(false);
     }
   };
 
@@ -903,14 +961,34 @@ export default function Inventory() {
                   <Loader2 className="h-6 w-6 animate-spin text-[#0066CC]" />
                 </div>
               ) : stockLevels.length === 0 ? (
-                <p className="text-sm text-center text-gray-500 py-8">No stock levels found for this SKU.</p>
+                <div className="flex flex-col items-center py-8">
+                  <p className="text-sm text-center text-gray-500 mb-4">No stock levels found for this SKU. Select a warehouse to initialize it.</p>
+                  <div className="flex gap-2">
+                    <select 
+                      value={initWarehouseId}
+                      onChange={(e) => setInitWarehouseId(e.target.value)}
+                      className="px-3 py-1.5 border border-gray-200 rounded-lg text-[13px] bg-white outline-none"
+                    >
+                      <option value="">Select Warehouse...</option>
+                      {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                    </select>
+                    <Button 
+                      disabled={!initWarehouseId || initializingStock}
+                      onClick={() => handleInitializeStock(initWarehouseId)}
+                      className="bg-[#E6F4FF] text-[#0066CC] hover:bg-[#D0E9FF] h-[34px] px-4"
+                    >
+                      {initializingStock && <Loader2 className="h-3 w-3 animate-spin mr-2" />}
+                      Initialize
+                    </Button>
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {stockLevels.map((sl) => (
                     <div key={sl.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50/50">
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm font-semibold text-gray-900">
-                          Warehouse: {sl.warehouse?.name || sl.warehouseName || sl.warehouseId.slice(0, 8)}
+                          Warehouse: {sl.warehouse?.name || sl.warehouseName || warehouseMap[sl.warehouseId] || sl.warehouseId.slice(0, 8)}
                         </span>
                         <span className="text-xs text-gray-500 font-mono">
                           Qty: {sl.quantity}

@@ -50,6 +50,7 @@ function getReasonStyle(reason: string) {
 export default function StockMovements() {
   const { can } = usePermissions();
   const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [users, setUsers] = useState<{ id: string; name: string; username: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -181,6 +182,34 @@ export default function StockMovements() {
     void loadMovements(controller.signal);
     return () => controller.abort();
   }, [warehouseIdFilter]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const loadUsers = async () => {
+      try {
+        const token = getAccessTokenFromCookie();
+        const res = await fetch(`${API_BASE}/users`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          signal: controller.signal,
+        });
+        if (res.ok) {
+          const body = await res.json();
+          setUsers(body?.data || (Array.isArray(body) ? body : []));
+        }
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        console.error('Failed to load users', e);
+      }
+    };
+    void loadUsers();
+    return () => controller.abort();
+  }, []);
+
+  const userMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    users.forEach((u) => { map[u.id] = u.name || u.username; });
+    return map;
+  }, [users]);
 
   // Client-side filtering
   const filteredMovements = useMemo(() => {
@@ -408,16 +437,21 @@ export default function StockMovements() {
                         <div className="flex items-center gap-3">
                            {movement.performedByUserId ? (
                              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E6F4FF] to-[#0066CC]/20 text-[#0066CC] shadow-sm flex items-center justify-center font-bold text-[11px] shrink-0">
-                               U
+                               {(userMap[movement.performedByUserId] || 'U').charAt(0).toUpperCase()}
                              </div>
                            ) : (
                              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 shadow-sm flex items-center justify-center text-[10px] text-gray-500 font-bold shrink-0">
                                SYS
                              </div>
                            )}
-                          <p className="text-[13px] font-medium text-gray-600 max-w-[200px] truncate" title={movement.note || 'System Auto'}>
-                            {movement.note || 'System Auto'}
-                          </p>
+                          <div className="flex flex-col">
+                            <span className="text-[13px] font-bold text-gray-900 truncate max-w-[200px]">
+                              {movement.performedByUserId ? (userMap[movement.performedByUserId] || 'Unknown User') : 'System'}
+                            </span>
+                            <p className="text-[11px] font-medium text-gray-500 max-w-[200px] truncate" title={movement.note || (movement.performedByUserId ? 'No note' : 'System Auto')}>
+                              {movement.note || (movement.performedByUserId ? 'No note' : 'System Auto')}
+                            </p>
+                          </div>
                         </div>
                       </td>
                     </tr>

@@ -26,6 +26,8 @@ export default function Notifications() {
   const markAsRead = useNotificationStore((s) => s.markAsRead);
   const markAllAsRead = useNotificationStore((s) => s.markAllAsRead);
   const localUnread = useNotificationStore((s) => s.unreadCount);
+  const formatMessage = useNotificationStore((s) => s.formatMessage);
+  const loadEntities = useNotificationStore((s) => s.loadEntities);
 
   const [items, setItems] = useState<Notification[]>([]);
   const [total, setTotal] = useState(0);
@@ -40,10 +42,11 @@ export default function Notifications() {
 
   useEffect(() => {
     mountedRef.current = true;
+    void loadEntities();
     return () => {
       mountedRef.current = false;
     };
-  }, []);
+  }, [loadEntities]);
 
   const load = useCallback(
     async (page: number, append: boolean, overrides?: { read?: ReadFilter; type?: string }) => {
@@ -195,7 +198,7 @@ export default function Notifications() {
                       {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
                     </span>
                   </div>
-                  <p className="text-[14px] text-gray-500 mt-0.5">{notification.message}</p>
+                  <p className="text-[14px] text-gray-500 mt-0.5">{formatMessage(notification.message)}</p>
                 </div>
                 {!notification.isRead && <span className="w-2.5 h-2.5 mt-1.5 shrink-0 rounded-full bg-[#6C5CE7]" />}
               </button>

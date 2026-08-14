@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { approveApproval, rejectApproval, negotiateApproval } from '@/api/approvals';
+import { API_BASE } from '@/api/_shared';
 import { useAuthStore } from '@/store/authStore';
 import { usePermissions } from '@/hooks/useCan';
 import type { Approval } from '@/pages/ApprovalQueue/types';
@@ -13,6 +14,79 @@ interface ApprovalSideSheetProps {
   onApproved?: (approval: Approval, createdPoIds: string[]) => void;
 }
 
+const parseReasoning = (text: string) => {
+  if (!text) return <p className="text-body-md text-gray-500 italic">No reasoning provided.</p>;
+
+  if (text.includes('\n')) {
+    return <p className="text-body-md text-gray-900 leading-relaxed whitespace-pre-wrap">{text}</p>;
+  }
+
+  const sentences = text.split(/(?<=\.)\s+/).filter(s => s.trim().length > 0);
+  
+  if (sentences.length <= 2) {
+    return <p className="text-body-md text-gray-900 leading-relaxed">{text}</p>;
+  }
+
+  const categories = [
+    { title: 'Inventory Status', icon: 'inventory_2', items: [] as string[] },
+    { title: 'Recommendation Rationale', icon: 'lightbulb', items: [] as string[] },
+    { title: 'Financial Impact & Scoring', icon: 'payments', items: [] as string[] },
+    { title: 'Other Notes', icon: 'info', items: [] as string[] }
+  ];
+
+  sentences.forEach(s => {
+    const lower = s.toLowerCase();
+    if (lower.includes('tco') || lower.includes('cost') || lower.includes('capital') || lower.includes('efficiency')) {
+      categories[2].items.push(s);
+    } else if (lower.includes('quantity') || lower.includes('capacity') || lower.includes('vendor') || lower.includes('suggests') || lower.includes('recommended') || lower.includes('replenish')) {
+      categories[1].items.push(s);
+    } else if (lower.includes('threshold') || lower.includes('demand') || lower.includes('stock') || lower.includes('inventory')) {
+      categories[0].items.push(s);
+    } else {
+      categories[3].items.push(s);
+    }
+  });
+
+  const hasCategorized = categories.some((c, i) => i < 3 && c.items.length > 0);
+
+  if (hasCategorized) {
+    return (
+      <div className="space-y-4">
+        {categories.map(cat => {
+          if (cat.items.length === 0) return null;
+          return (
+            <div key={cat.title} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+              <h5 className="text-label-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px] text-secondary">{cat.icon}</span>
+                {cat.title}
+              </h5>
+              <ul className="space-y-2">
+                {cat.items.map((item, i) => (
+                  <li key={i} className="flex gap-2 text-body-md text-gray-700 items-start leading-snug">
+                    <span className="text-secondary/50 mt-0.5">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <ul className="space-y-3">
+      {sentences.map((sentence, idx) => (
+        <li key={idx} className="flex gap-3 text-body-md text-gray-800 leading-relaxed items-start">
+           <span className="material-symbols-outlined text-secondary text-[18px] shrink-0 mt-0.5">check_circle</span>
+           <span>{sentence}</span>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
 export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusChanged, onApproved }: ApprovalSideSheetProps) {
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
@@ -23,6 +97,28 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
   const canApprove = can('approvals.approve');
   const canReject = can('approvals.reject');
   const canEditPayload = can('approvals.editPayload');
+
+  const [users, setUsers] = useState<{id: string; name: string}[]>([]);
+  useEffect(() => {
+    if (isOpen) {
+      const tokenMatch = document.cookie.match(/(?:^|;\s*)token=([^;]*)/);
+      const token = tokenMatch ? decodeURIComponent(tokenMatch[1]) : null;
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+      fetch(`${API_BASE}/users`, { headers })
+        .then(r => r.json())
+        .then(body => {
+           const list = body?.success === true ? body.data : Array.isArray(body) ? body : [];
+           setUsers(Array.isArray(list) ? list : []);
+        })
+        .catch(console.error);
+    }
+  }, [isOpen]);
+
+  const userMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    users.forEach(u => { map[u.id] = u.name; });
+    return map;
+  }, [users]);
 
   const handleApprove = useCallback(async () => {
     if (!approval) return;
@@ -124,10 +220,10 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
                       : 'bg-red-100 text-red-800 border border-red-200'
                 }`}>
                   {approval.status === 'approved'
-                    ? `Approved by ${approval.reviewedBy?.substring(0, 8) ?? 'unknown'}`
+                    ? `Approved by ${approval.reviewedBy ? userMap[approval.reviewedBy] || approval.reviewedBy.substring(0, 8) : 'unknown'}`
                     : approval.status === 'deferred'
-                      ? `Deferred to negotiation by ${approval.reviewedBy?.substring(0, 8) ?? 'unknown'}`
-                      : `Rejected by ${approval.reviewedBy?.substring(0, 8) ?? 'unknown'}`}
+                      ? `Deferred to negotiation by ${approval.reviewedBy ? userMap[approval.reviewedBy] || approval.reviewedBy.substring(0, 8) : 'unknown'}`
+                      : `Rejected by ${approval.reviewedBy ? userMap[approval.reviewedBy] || approval.reviewedBy.substring(0, 8) : 'unknown'}`}
                   {approval.reviewedAt ? ` on ${formatDate(approval.reviewedAt)}` : ''}
                 </div>
               )}
@@ -136,7 +232,10 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
                 <div className="p-4 bg-white border border-gray-200 rounded-lg">
                   <p className="text-label-md text-gray-500 uppercase mb-1">Proposed Value</p>
                   <p className="text-headline-sm font-semibold">
-                    ${proposedValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {approval.agentType === 'negotiation' 
+                      ? `${proposedValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%` 
+                      : `$${proposedValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    }
                   </p>
                 </div>
                 <div className="p-4 bg-white border border-gray-200 rounded-lg">
@@ -150,10 +249,8 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
                   <span className="material-symbols-outlined text-gray-700">smart_toy</span>
                   <h4 className="text-headline-sm font-semibold text-gray-900">AI Reasoning</h4>
                 </div>
-                <div className="bg-gray-100/5 border-l-4 border-secondary p-4 rounded-r-lg">
-                  <p className="text-body-md text-gray-900 leading-relaxed italic">
-                    {approval.reasoning || 'No reasoning provided.'}
-                  </p>
+                <div className="p-1 rounded-lg">
+                  {parseReasoning(approval.reasoning || '')}
                 </div>
               </section>
 

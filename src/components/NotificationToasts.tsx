@@ -18,14 +18,17 @@ function ToastCard({ toastKey }: { toastKey: string }) {
   );
   const removeToast = useNotificationStore((s) => s.removeToast);
   const markAsRead = useNotificationStore((s) => s.markAsRead);
+  const formatMessage = useNotificationStore((s) => s.formatMessage);
+  const loadEntities = useNotificationStore((s) => s.loadEntities);
 
   useEffect(() => {
     if (!notification) return;
+    void loadEntities();
     const ms = AUTO_DISMISS_MS[notification.severity];
     if (ms == null) return;
     const timer = setTimeout(() => removeToast(toastKey), ms);
     return () => clearTimeout(timer);
-  }, [notification, removeToast, toastKey]);
+  }, [notification, removeToast, toastKey, loadEntities]);
 
   if (!notification) return null;
 
@@ -61,7 +64,7 @@ function ToastCard({ toastKey }: { toastKey: string }) {
       <Icon className={`h-5 w-5 shrink-0 mt-0.5 ${iconColor}`} />
       <div className="flex-1 min-w-0">
         <p className="text-[14px] font-bold leading-snug">{notification.title}</p>
-        <p className="text-[13px] mt-0.5 opacity-90 leading-snug line-clamp-2">{notification.message}</p>
+        <p className="text-[13px] mt-0.5 opacity-90 leading-snug line-clamp-2">{formatMessage(notification.message)}</p>
       </div>
       <button
         aria-label="Dismiss notification"

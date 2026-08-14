@@ -6,6 +6,7 @@ import {
   markNotificationRead,
   type Notification,
 } from '@/api/notifications';
+import { API_BASE } from '@/api/_shared';
 
 const MAX_LIST = 50;
 const FALLBACK_LIMIT = 20;
@@ -28,6 +29,10 @@ interface NotificationState {
   markAllAsRead: () => Promise<void>;
   addToast: (notification: Notification) => void;
   removeToast: (key: string) => void;
+  entityMap: Record<string, string>;
+  entitiesLoaded: boolean;
+  loadEntities: () => Promise<void>;
+  formatMessage: (msg: string) => string;
 }
 
 const CHANNEL_NAME = 'stocksavvy:notifications';
@@ -64,6 +69,51 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
     toasts: [],
     loaded: false,
     error: null,
+    entityMap: {},
+    entitiesLoaded: false,
+
+    loadEntities: async () => {
+      if (get().entitiesLoaded) return;
+      try {
+        const tokenMatch = document.cookie.match(/(?:^|;\s*)token=([^;]*)/);
+        const token = tokenMatch ? decodeURIComponent(tokenMatch[1]) : null;
+        const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+        
+        const [skus, vendors, warehouses, users] = await Promise.all([
+          fetch(`${API_BASE}/sku`, { headers }).then(r => r.json()),
+          fetch(`${API_BASE}/vendors`, { headers }).then(r => r.json()),
+          fetch(`${API_BASE}/warehouses`, { headers }).then(r => r.json()),
+          fetch(`${API_BASE}/users`, { headers }).then(r => r.json()),
+        ]);
+
+        const map: Record<string, string> = {};
+        const process = (res: any) => {
+          const arr = res?.data || (Array.isArray(res) ? res : []);
+          arr.forEach((item: any) => {
+            if (item.id && item.name) {
+              map[item.id] = item.name;
+              map[item.id.substring(0, 8)] = item.name;
+            }
+          });
+        };
+        process(skus);
+        process(vendors);
+        process(warehouses);
+        process(users);
+        
+        set({ entityMap: map, entitiesLoaded: true });
+      } catch (e) {
+        console.error('Failed to load entities for notifications', e);
+      }
+    },
+
+    formatMessage: (msg: string) => {
+      if (!msg) return msg;
+      const { entityMap } = get();
+      return msg.replace(/\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b|\b[0-9a-f]{8}\b/gi, (match) => {
+        return entityMap[match.toLowerCase()] || match;
+      });
+    },
 
     refresh: async () => {
       try {

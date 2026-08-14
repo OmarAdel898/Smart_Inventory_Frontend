@@ -132,10 +132,10 @@ export default function TopAppBar() {
                 </div>
                 <div className="flex flex-col overflow-hidden">
                   <span className="text-[16px] font-bold text-gray-900 truncate">
-                    {user?.name || user?.username || 'Devon Lane'}
+                    {user?.name || user?.username || 'User'}
                   </span>
                   <span className="text-[14px] font-medium text-gray-500 truncate">
-                    {user?.email || 'info@example.com'}
+                    {user?.email || ''}
                   </span>
                 </div>
               </div>

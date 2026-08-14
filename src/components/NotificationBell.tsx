@@ -17,6 +17,8 @@ export default function NotificationBell() {
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   const markAsRead = useNotificationStore((s) => s.markAsRead);
   const markAllAsRead = useNotificationStore((s) => s.markAllAsRead);
+  const formatMessage = useNotificationStore((s) => s.formatMessage);
+  const loadEntities = useNotificationStore((s) => s.loadEntities);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -27,6 +29,12 @@ export default function NotificationBell() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      void loadEntities();
+    }
+  }, [isOpen, loadEntities]);
 
   const preview = useMemo(() => notifications.slice(0, MAX_PREVIEW), [notifications]);
 
@@ -98,7 +106,7 @@ export default function NotificationBell() {
                         )}
                       </span>
                       <span className="block text-[13px] text-gray-500 mt-0.5 truncate">
-                        {notification.message}
+                        {formatMessage(notification.message)}
                       </span>
                       <span className="block text-[11px] text-gray-400 mt-1 font-medium">
                         {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}

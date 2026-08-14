@@ -115,12 +115,31 @@ export default function Profile() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const handleCustomerPortal = async () => {
+    if (!profile?.tenantId) return;
+    setBillingLoading(true);
+    try {
+      const result = await api.post<any>('/stripe/customer-portal', {
+        tenantId: profile.tenantId,
+        returnUrl: window.location.origin + '/profile?tab=billing',
+      });
+      if (result && result.url) {
+        window.location.href = result.url;
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Failed to access customer portal.');
+    } finally {
+      setBillingLoading(false);
+    }
+  };
   const [activeTab, setActiveTab] = useState<'profile' | 'billing'>('profile');
   const [plans, setPlans] = useState<any[]>([]);
   const [billingLoading, setBillingLoading] = useState(false);
   const [tenant, setTenant] = useState<TenantResponse | null>(null);
   const [billingData, setBillingData] = useState<BillingPortalData | null>(null);
   const [billingInfoLoading, setBillingInfoLoading] = useState(false);
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
 
   const loadPlans = async () => {
     try {
@@ -175,14 +194,54 @@ export default function Profile() {
     const controller = new AbortController();
     void loadProfile(controller.signal);
     void loadPlans();
+    
+    // Check for checkout redirect
+    const searchParams = new URLSearchParams(window.location.search);
+    const checkoutStatus = searchParams.get('checkout');
+    if (checkoutStatus === 'success') {
+      setCheckoutSuccess(true);
+      setActiveTab('billing');
+      setSaveMessage('Subscription updated successfully. It may take a moment to reflect here.');
+      // Remove query param from URL without reloading
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (checkoutStatus === 'cancel') {
+      setActiveTab('billing');
+      setError('Checkout was cancelled.');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
     return () => controller.abort();
   }, []);
 
   useEffect(() => {
-    if (profile?.role === 'tenant_owner' && profile.tenantId) {
-      void loadTenant(profile.tenantId);
+    if (profile?.role === 'tenant' && profile.tenantId) {
+      let isSubscribed = true;
+
+      const fetchTenant = async (retryCount = 0) => {
+        try {
+          const data = await tenantApi.getTenant(profile.tenantId!);
+          if (!isSubscribed) return;
+          
+          setTenant(data);
+
+          // If we just came from a successful checkout, and the status is not active yet, poll a few times
+          if (checkoutSuccess && data.subscriptionStatus !== 'active' && retryCount < 5) {
+            setTimeout(() => {
+              if (isSubscribed) fetchTenant(retryCount + 1);
+            }, 2000);
+          }
+        } catch (e) {
+          console.error('Failed to load tenant', e);
+        }
+      };
+
+      void fetchTenant();
+      
+      return () => {
+        isSubscribed = false;
+      };
     }
-  }, [profile?.tenantId, profile?.role]);
+  }, [profile?.tenantId, profile?.role, checkoutSuccess]);
 
   useEffect(() => {
     const tenantId = profile?.tenantId;
@@ -415,7 +474,7 @@ export default function Profile() {
         >
           Profile Details
         </button>
-        {profile?.role === 'tenant_owner' && (
+        {profile?.role === 'tenant' && (
           <button
             onClick={() => setActiveTab('billing')}
             className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${
@@ -591,7 +650,7 @@ export default function Profile() {
 
       {activeTab === 'billing' && (
         <div className="space-y-6 max-w-4xl">
-          {tenant?.subscriptionStatus === 'active' ? (
+          {tenant?.subscriptionStatus === 'active' || (tenant?.subscriptionStatus === 'trialing' && tenant?.planId) ? (
             <>
               {/* Current Subscription Card */}
               <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -599,7 +658,7 @@ export default function Profile() {
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold text-gray-900">Current subscription</h2>
                     <div className="flex gap-3">
-                      <Button variant="outline" className="font-bold rounded-lg border-gray-200">Change</Button>
+                      <Button onClick={handleCustomerPortal} disabled={billingLoading} variant="outline" className="font-bold rounded-lg border-gray-200">Change</Button>
                     </div>
                   </div>
                   
@@ -615,7 +674,7 @@ export default function Profile() {
                         <tr className="bg-gray-50 border-b border-gray-200 text-[11px] font-bold uppercase tracking-wider text-gray-500">
                           <th className="px-6 py-4">Selected Plan</th>
                           <th className="px-6 py-4">Price</th>
-                          <th className="px-6 py-4">Seats</th>
+                          <th className="px-6 py-4">Limits</th>
                           <th className="px-6 py-4">Status</th>
                         </tr>
                       </thead>
@@ -628,13 +687,20 @@ export default function Profile() {
                             ${tenant?.plan?.price || 99}/month
                           </td>
                           <td className="px-6 py-5 text-gray-600 font-medium">
-                            Unlimited
+                            Based on Plan
                           </td>
                           <td className="px-6 py-5">
-                             <span className="bg-[#E6FFE6] text-[#008A00] px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase inline-flex items-center gap-1 border border-[#008A00]/20">
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                Active
-                              </span>
+                            {tenant?.subscriptionStatus === 'trialing' ? (
+                               <span className="bg-[#FFF5E6] text-[#CC7A00] px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase inline-flex items-center gap-1 border border-[#CC7A00]/20">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  Trialing
+                                </span>
+                            ) : (
+                               <span className="bg-[#E6FFE6] text-[#008A00] px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase inline-flex items-center gap-1 border border-[#008A00]/20">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  Active
+                                </span>
+                            )}
                           </td>
                         </tr>
                       </tbody>
@@ -648,7 +714,7 @@ export default function Profile() {
                 <div className="p-8">
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold text-gray-900">Credit card details</h2>
-                    <Button variant="outline" className="font-bold rounded-lg border-gray-200">Update</Button>
+                    <Button onClick={handleCustomerPortal} disabled={billingLoading} variant="outline" className="font-bold rounded-lg border-gray-200">Update</Button>
                   </div>
                   
                   {billingInfoLoading ? (
@@ -742,10 +808,31 @@ export default function Profile() {
               </div>
             </>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Subscription Plans</h2>
-                <p className="text-gray-500 mb-8">Upgrade your plan to unlock more features and higher limits.</p>
+            <>
+              {tenant?.subscriptionStatus === 'trialing' && !tenant?.planId && (
+                <div className="bg-gradient-to-r from-[#001A40] to-[#003380] text-white rounded-xl p-8 shadow-md mb-8">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="bg-white/20 p-3 rounded-full">
+                      <Zap className="w-6 h-6 text-[#FFD700]" />
+                    </div>
+                    <h2 className="text-2xl font-bold">14-Day Free Trial Active</h2>
+                  </div>
+                  <p className="text-white/80 text-lg mb-6 max-w-2xl">
+                    You are currently enjoying full access to all features! Your trial expires on 
+                    <span className="font-bold text-white ml-1">
+                      {tenant.trialEndsAt ? new Date(tenant.trialEndsAt).toLocaleDateString() : 'soon'}
+                    </span>. 
+                    Please select a plan below to ensure uninterrupted access when your trial ends.
+                  </p>
+                </div>
+              )}
 
+              {/* Plans Section */}
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden p-8">
+                <div className="mb-8">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Subscription Plans</h2>
+                  <p className="text-gray-500">Upgrade your plan to unlock more features and higher limits.</p>
+                </div>
                 <div className="grid md:grid-cols-3 gap-6">
                   {plans.map((plan) => (
                     <div key={plan.id} className={`rounded-2xl p-6 flex flex-col relative border ${plan.isPopular ? 'border-[#0066CC] bg-[#F5FAFF]' : 'border-gray-200 bg-white'}`}>
@@ -792,8 +879,9 @@ export default function Profile() {
                     </div>
                   ))}
                 </div>
-            </div>
-            )}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
