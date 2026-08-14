@@ -28,11 +28,9 @@ import { userCreateSchema, userEditSchema } from '@/features/users/validations';
 import { usePermissions } from '@/hooks/useCan';
 
 export type UserRole =
-  | 'super_admin'
-  | 'tenant_owner'
+  | 'tenant'
   | 'warehouse_manager'
-  | 'branch_manager'
-  | 'inventory_clerk';
+  | 'clerk';
 
 export type UserItem = {
   id: string;
@@ -60,11 +58,9 @@ function formatDate(value: string): string {
 }
 
 const ROLE_STYLES: Record<UserRole, { label: string; bg: string; text: string }> = {
-  super_admin: { label: 'Super Admin', bg: 'bg-purple-100', text: 'text-purple-800' },
-  tenant_owner: { label: 'Tenant Owner', bg: 'bg-indigo-100', text: 'text-indigo-800' },
+  tenant: { label: 'Tenant', bg: 'bg-indigo-100', text: 'text-indigo-800' },
   warehouse_manager: { label: 'Warehouse Manager', bg: 'bg-blue-100', text: 'text-blue-800' },
-  branch_manager: { label: 'Branch Manager', bg: 'bg-emerald-100', text: 'text-emerald-800' },
-  inventory_clerk: { label: 'Inventory Clerk', bg: 'bg-amber-100', text: 'text-amber-800' },
+  clerk: { label: 'Clerk', bg: 'bg-amber-100', text: 'text-amber-800' },
 };
 
 function getInitials(name: string | null, email: string): string {
@@ -174,6 +170,12 @@ export default function Users() {
     void loadWarehouses(controller.signal);
     return () => controller.abort();
   }, []);
+
+  const warehouseMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    warehouses.forEach(w => { map[w.id] = w.name; });
+    return map;
+  }, [warehouses]);
 
   // Filtered users
   const filteredUsers = useMemo(() => {
@@ -429,11 +431,9 @@ export default function Users() {
               className="px-3 py-1.5 border border-gray-200 rounded-lg text-[13px] font-semibold text-gray-700 bg-white hover:bg-gray-50 shadow-sm outline-none transition-all cursor-pointer"
             >
               <option value="all">All Roles</option>
-              <option value="tenant_owner">Tenant Owner</option>
+              <option value="tenant">Tenant</option>
               <option value="warehouse_manager">Warehouse Manager</option>
-              <option value="branch_manager">Branch Manager</option>
-              <option value="inventory_clerk">Inventory Clerk</option>
-              <option value="super_admin">Super Admin</option>
+              <option value="clerk">Clerk</option>
             </select>
             <select 
               value={statusFilter}
@@ -522,7 +522,7 @@ export default function Users() {
                         {roleLabel}
                       </td>
                       <td className="px-6 py-4 align-middle text-[13px] font-medium text-gray-600">
-                        {u.warehouseId ? u.warehouseId.slice(0,8).toUpperCase() : 'Global'}
+                        {u.warehouseId ? warehouseMap[u.warehouseId] || u.warehouseId.slice(0,8).toUpperCase() : 'Global'}
                       </td>
                       <td className="px-6 py-4 align-middle text-[13px] font-medium text-gray-500 whitespace-nowrap">
                         {formatDate(u.createdAt)}
@@ -532,7 +532,7 @@ export default function Users() {
                           <button onClick={() => openEditModal(u)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-colors" title="Edit">
                             <Edit2 className="w-4 h-4" />
                           </button>
-                          {['tenant_owner', 'super_admin'].includes(userRole || '') && (
+                          {['tenant'].includes(userRole || '') && (
                             u.isActive ? (
                               <button onClick={() => { setDeletingUser(u); setFormError(null); }} className="p-1.5 rounded-lg text-gray-400 hover:bg-[#FFD9DF]/50 hover:text-[#B30024] transition-colors" title="Deactivate">
                                 <Ban className="w-4 h-4" />
@@ -689,11 +689,9 @@ export default function Users() {
                     }
                     className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.role ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                   >
-                    <option value="tenant_owner">Tenant Owner</option>
+                    <option value="tenant">Tenant</option>
                     <option value="warehouse_manager">Warehouse Manager</option>
-                    <option value="branch_manager">Branch Manager</option>
-                    <option value="inventory_clerk">Inventory Clerk</option>
-                    <option value="super_admin">Super Admin</option>
+                    <option value="clerk">Clerk</option>
                   </select>
                   {fieldErrors.role && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.role}</p>}
                 </div>
@@ -813,11 +811,9 @@ export default function Users() {
                     onChange={(e) => setEditForm({ ...editForm, role: e.target.value as UserRole })}
                     className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.role ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                   >
-                    <option value="tenant_owner">Tenant Owner</option>
+                    <option value="tenant">Tenant</option>
                     <option value="warehouse_manager">Warehouse Manager</option>
-                    <option value="branch_manager">Branch Manager</option>
-                    <option value="inventory_clerk">Inventory Clerk</option>
-                    <option value="super_admin">Super Admin</option>
+                    <option value="clerk">Clerk</option>
                   </select>
                   {fieldErrors.role && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.role}</p>}
                 </div>

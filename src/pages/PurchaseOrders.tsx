@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { usePermissions } from '@/hooks/useCan';
 
 export type LineItem = {
   id: string;
@@ -79,10 +80,12 @@ function formatCurrency(amount: number): string {
 
 export default function PurchaseOrders() {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+  const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
+  const { can } = usePermissions();
 
   // Filters state
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -137,6 +140,36 @@ export default function PurchaseOrders() {
     return () => controller.abort();
   }, [statusFilter, warehouseIdFilter]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    const loadRelations = async () => {
+      try {
+        const token = getToken();
+        const res = await fetch(`${API_BASE}/vendors`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          signal: controller.signal,
+        });
+        if (res.ok) {
+          const body = await res.json();
+          setVendors(body?.data || (Array.isArray(body) ? body : []));
+        }
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        console.error('Failed to load vendors', e);
+      }
+    };
+    void loadRelations();
+    return () => controller.abort();
+  }, []);
+
+  const vendorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    vendors.forEach((v) => {
+      map[v.id] = v.name;
+    });
+    return map;
+  }, [vendors]);
+
   // Client-side search filtering
   const filteredOrders = useMemo(() => {
     if (!searchTerm.trim()) return orders;
@@ -145,6 +178,7 @@ export default function PurchaseOrders() {
       (o) =>
         o.id.toLowerCase().includes(lower) ||
         o.vendorId.toLowerCase().includes(lower) ||
+        (vendorMap[o.vendorId] && vendorMap[o.vendorId].toLowerCase().includes(lower)) ||
         o.status.toLowerCase().includes(lower)
     );
   }, [orders, searchTerm]);
@@ -181,13 +215,15 @@ export default function PurchaseOrders() {
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </button>
-          <button 
-            onClick={() => navigate('/purchase-orders/new')}
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-bold text-[#0066CC] bg-[#E6F4FF] hover:bg-[#D0E9FF] shadow-sm transition-all"
-          >
-            <Plus className="h-4 w-4" />
-            Create Purchase Order
-          </button>
+          {can('purchaseOrders.manage') && (
+            <button 
+              onClick={() => navigate('/purchase-orders/new')}
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-bold text-[#0066CC] bg-[#E6F4FF] hover:bg-[#D0E9FF] shadow-sm transition-all"
+            >
+              <Plus className="h-4 w-4" />
+              Create Purchase Order
+            </button>
+          )}
         </div>
       </div>
 
@@ -354,8 +390,8 @@ export default function PurchaseOrders() {
                           <span className="text-[11px] font-medium text-gray-500 font-mono mt-0.5">{order.id.slice(0, 18)}…</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 align-middle text-[13px] font-medium text-gray-600 font-mono">
-                        {order.vendorId.slice(0, 12)}…
+                      <td className="px-6 py-4 align-middle text-[13px] font-medium text-gray-600">
+                        {vendorMap[order.vendorId] || order.vendorId.slice(0, 12) + '…'}
                       </td>
                       <td className="px-6 py-4 align-middle">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${style.bg} ${style.text}`}>

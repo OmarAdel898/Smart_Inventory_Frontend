@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAccessTokenFromCookie, getWarehouseIdFromToken } from '@/lib/auth';
+import { useAuthStore } from '@/store/authStore';
 import {
   fetchBranchDashboardSnapshot,
   fetchRecentMovementsBySku,
@@ -108,6 +109,7 @@ function LoadingState({ label }: { label: string }) {
 }
 
 export default function BranchDashboard() {
+  const user = useAuthStore((s) => s.user);
   const warehouseId = getWarehouseIdFromToken(getAccessTokenFromCookie());
   const [snapshot, setSnapshot] = useState<BranchDashboardSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,6 +119,21 @@ export default function BranchDashboard() {
   const [movementsLoading, setMovementsLoading] = useState(false);
   const [movementsError, setMovementsError] = useState<string | null>(null);
   const [selectedSkuId, setSelectedSkuId] = useState<string>('');
+
+  const [skus, setSkus] = useState<{ id: string; name: string }[]>([]);
+  const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
+
+  const skuMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    skus.forEach(s => { map[s.id] = s.name; });
+    return map;
+  }, [skus]);
+
+  const vendorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    vendors.forEach(v => { map[v.id] = v.name; });
+    return map;
+  }, [vendors]);
 
   const lowStockItems = snapshot?.lowStockItems || [];
   const stockLevels = snapshot?.stockLevels || [];
@@ -148,10 +165,25 @@ export default function BranchDashboard() {
     setError(null);
 
     try {
-      const data = await fetchBranchDashboardSnapshot(warehouseId);
+      const token = getAccessTokenFromCookie();
+      const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
+      const [data, skusRes, vendorsRes] = await Promise.all([
+        fetchBranchDashboardSnapshot(warehouseId),
+        fetch('http://localhost:3000/sku', { headers: authHeaders }),
+        fetch('http://localhost:3000/vendors', { headers: authHeaders })
+      ]);
       setSnapshot(data);
       const nextSku = data.selectedSkuId || '';
       setSelectedSkuId(nextSku);
+
+      if (skusRes.ok) {
+        const body = await skusRes.json();
+        setSkus(body?.data || (Array.isArray(body) ? body : []));
+      }
+      if (vendorsRes.ok) {
+        const body = await vendorsRes.json();
+        setVendors(body?.data || (Array.isArray(body) ? body : []));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load warehouse dashboard.');
     } finally {
@@ -218,12 +250,13 @@ export default function BranchDashboard() {
 
   const warehouseName = snapshot?.warehouse?.name || 'Assigned Warehouse';
   const warehouseLocation = snapshot?.warehouse?.location || '—';
+  const roleDisplay = user?.role === 'clerk' ? 'Clerk Dashboard' : 'Warehouse Manager Dashboard';
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-medium text-[#0066CC]">Warehouse Manager Dashboard</p>
+          <p className="text-sm font-medium text-[#0066CC]">{roleDisplay}</p>
           <h1 className="text-3xl font-semibold tracking-tight text-gray-900">{warehouseName}</h1>
           <p className="mt-1 text-sm text-gray-500">
             Live operational snapshot for warehouse at {warehouseLocation}.
@@ -326,7 +359,7 @@ export default function BranchDashboard() {
                         >
                           <td className="px-6 py-4 align-top text-sm font-mono font-semibold text-[#0066CC]">{shortId(item.skuId)}</td>
                           <td className="px-6 py-4 align-top">
-                            <div className="font-medium text-gray-900">{item.skuName}</div>
+                            <div className="font-medium text-gray-900">{item.skuName || skuMap[item.skuId]}</div>
                             <div className="text-xs text-gray-500">{item.warehouseName || warehouseName}</div>
                           </td>
                           <td className="px-6 py-4 align-top text-right">
@@ -372,7 +405,7 @@ export default function BranchDashboard() {
                       >
                         <td className="px-6 py-4 align-top text-sm font-mono font-semibold text-[#0066CC]">{shortId(item.skuId)}</td>
                         <td className="px-6 py-4 align-top">
-                          <div className="font-medium text-gray-900">{item.skuName}</div>
+                          <div className="font-medium text-gray-900">{item.skuName || skuMap[item.skuId]}</div>
                           <div className="text-xs text-gray-500">{item.warehouseName || warehouseName}</div>
                         </td>
                         <td className="px-6 py-4 align-top text-right text-sm font-semibold text-gray-900">
@@ -407,7 +440,7 @@ export default function BranchDashboard() {
                     .filter((item, index, array) => array.findIndex((x) => x.skuId === item.skuId) === index)
                     .map((item) => (
                       <option key={item.skuId} value={item.skuId}>
-                        {item.skuName}
+                        {item.skuName || skuMap[item.skuId] || item.skuId}
                       </option>
                     ))}
                 </select>
@@ -450,7 +483,7 @@ export default function BranchDashboard() {
                             {formatDate(movement.createdAt)}
                           </td>
                           <td className="px-6 py-4 align-top">
-                            <div className="font-medium text-gray-900">{movement.skuName || 'Unknown SKU'}</div>
+                            <div className="font-medium text-gray-900">{movement.skuName || skuMap[movement.skuId] || 'Unknown SKU'}</div>
                             <div className="text-xs font-mono text-gray-500">{shortId(movement.skuId)}</div>
                           </td>
                           <td className="px-6 py-4 align-top text-sm text-gray-500">{reasonLabel}</td>
@@ -509,7 +542,7 @@ export default function BranchDashboard() {
                   <div key={po.id} className="p-4 hover:bg-gray-50 transition-colors">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="font-medium text-gray-900">{po.vendorName || shortId(po.vendorId)}</div>
+                        <div className="font-medium text-gray-900">{po.vendorName || vendorMap[po.vendorId] || shortId(po.vendorId)}</div>
                         <div className="text-xs text-gray-500 font-mono mt-0.5">{shortId(po.id)}</div>
                       </div>
                       <StatusPill value={po.status.replace(/_/g, ' ')} tone="amber" />

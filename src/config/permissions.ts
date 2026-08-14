@@ -33,24 +33,11 @@ export type Permission =
 type PermissionMap = Partial<Record<string, Permission[]>>;
 
 const ROLE_PERMISSIONS: PermissionMap = {
-  super_admin: [
+  tenant: [
     'sidebar.dashboard', 'sidebar.notifications', 'sidebar.users', 'sidebar.inventory', 'sidebar.vendors',
     'sidebar.approvals', 'sidebar.purchaseOrders', 'sidebar.negotiations',
     'sidebar.assistant', 'sidebar.profile', 'sidebar.warehouses', 'sidebar.movements',
     'dashboard.view', 'dashboard.branch',
-    'approvals.view', 'approvals.approve', 'approvals.reject', 'approvals.editPayload',
-    'users.view', 'users.manage',
-    'inventory.view', 'inventory.manage',
-    'vendors.view', 'vendors.manage',
-    'purchaseOrders.view', 'purchaseOrders.manage',
-    'warehouses.view', 'warehouses.manage',
-    'movements.view', 'movements.manage',
-  ],
-  tenant_owner: [
-    'sidebar.dashboard', 'sidebar.notifications', 'sidebar.users', 'sidebar.inventory', 'sidebar.vendors',
-    'sidebar.approvals', 'sidebar.purchaseOrders', 'sidebar.negotiations',
-    'sidebar.assistant', 'sidebar.profile', 'sidebar.warehouses', 'sidebar.movements',
-    'dashboard.view',
     'approvals.view', 'approvals.approve', 'approvals.reject', 'approvals.editPayload',
     'users.view', 'users.manage',
     'inventory.view', 'inventory.manage',
@@ -71,42 +58,10 @@ const ROLE_PERMISSIONS: PermissionMap = {
     'warehouses.view', 'warehouses.manage',
     'movements.view', 'movements.manage',
   ],
-  branch_manager: [
-    'sidebar.dashboard', 'sidebar.notifications', 'sidebar.inventory', 'sidebar.vendors',
-    'sidebar.approvals', 'sidebar.purchaseOrders',
-    'sidebar.profile',
-    'dashboard.branch',
-    'inventory.view',
-    'vendors.view',
-    'approvals.view',
-    'purchaseOrders.view',
-  ],
-  procurement_officer: [
-    'sidebar.dashboard', 'sidebar.notifications', 'sidebar.vendors', 'sidebar.approvals', 'sidebar.purchaseOrders',
-    'sidebar.profile',
-    'dashboard.view',
-    'approvals.view', 'approvals.approve', 'approvals.reject', 'approvals.editPayload',
-    'vendors.view', 'vendors.manage',
-    'purchaseOrders.view', 'purchaseOrders.manage',
-  ],
-  analyst: [
-    'sidebar.dashboard', 'sidebar.notifications', 'sidebar.inventory', 'sidebar.approvals',
-    'sidebar.assistant', 'sidebar.profile',
-    'dashboard.view',
-    'inventory.view',
-    'approvals.view',
-  ],
-  viewer: [
-    'sidebar.dashboard', 'sidebar.notifications', 'sidebar.inventory',
-    'sidebar.profile',
-    'dashboard.view',
-    'inventory.view',
-    'approvals.view',
-  ],
-  inventory_clerk: [
+  clerk: [
     'sidebar.dashboard', 'sidebar.notifications', 'sidebar.inventory',
     'sidebar.purchaseOrders', 'sidebar.movements', 'sidebar.profile',
-    'dashboard.view',
+    'dashboard.view', 'dashboard.branch',
     'inventory.view', 'inventory.manage',
     'purchaseOrders.view',
     'movements.view', 'movements.manage',
@@ -114,5 +69,5 @@ const ROLE_PERMISSIONS: PermissionMap = {
 };
 
 export function getRolePermissions(role: string): Permission[] {
-  return ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.viewer!;
+  return ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.clerk!;
 }

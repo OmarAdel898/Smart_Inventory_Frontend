@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { usePermissions } from '@/hooks/useCan';
 
 export type LineItem = {
   id: string;
@@ -114,6 +115,11 @@ export default function PurchaseOrderDetail() {
   const [transitionError, setTransitionError] = useState<string | null>(null);
   const [ratingStars, setRatingStars] = useState(0);
   const [damagedUnits, setDamagedUnits] = useState('');
+  const { can } = usePermissions();
+
+  const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
+  const [users, setUsers] = useState<{ id: string; name: string; username: string }[]>([]);
+  const [skus, setSkus] = useState<{ id: string; name: string }[]>([]);
 
   const loadOrder = async (signal?: AbortSignal) => {
     setLoading(true);
@@ -179,6 +185,57 @@ export default function PurchaseOrderDetail() {
     void loadOrder(controller.signal);
     return () => controller.abort();
   }, [id]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const loadRelations = async () => {
+      try {
+        const token = getToken();
+        const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+        const [venRes, usrRes, skuRes] = await Promise.all([
+          fetch(`${API_BASE}/vendors`, { headers, signal: controller.signal }),
+          fetch(`${API_BASE}/users`, { headers, signal: controller.signal }),
+          fetch(`${API_BASE}/sku`, { headers, signal: controller.signal }),
+        ]);
+
+        if (venRes.ok) {
+          const body = await venRes.json();
+          setVendors(body?.data || (Array.isArray(body) ? body : []));
+        }
+        if (usrRes.ok) {
+          const body = await usrRes.json();
+          setUsers(body?.data || (Array.isArray(body) ? body : []));
+        }
+        if (skuRes.ok) {
+          const body = await skuRes.json();
+          setSkus(body?.data || (Array.isArray(body) ? body : []));
+        }
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        console.error('Failed to load relations', e);
+      }
+    };
+    void loadRelations();
+    return () => controller.abort();
+  }, []);
+
+  const vendorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    vendors.forEach((v) => { map[v.id] = v.name; });
+    return map;
+  }, [vendors]);
+
+  const userMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    users.forEach((u) => { map[u.id] = u.name || u.username; });
+    return map;
+  }, [users]);
+
+  const skuMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    skus.forEach((s) => { map[s.id] = s.name; });
+    return map;
+  }, [skus]);
 
   if (loading) {
     return (
@@ -249,7 +306,7 @@ export default function PurchaseOrderDetail() {
               </span>
             </div>
             <p className="mt-1 text-xs text-gray-500">
-              Vendor ID: <span className="font-mono text-gray-900 font-semibold">{order.vendorId}</span>
+              Vendor: <span className="text-gray-900 font-semibold">{vendorMap[order.vendorId] || order.vendorId}</span>
               <span className="mx-2">•</span>
               Created: {formatDate(order.createdAt)}
             </p>
@@ -345,7 +402,7 @@ export default function PurchaseOrderDetail() {
       )}
 
       {/* Status Transition Action Buttons Bar */}
-      {availableTransitions.length > 0 && (
+      {can('purchaseOrders.manage') && availableTransitions.length > 0 && (
         <Card className="border-gray-200 shadow-sm bg-white">
           <CardHeader className="border-b border-gray-200 py-3">
             <CardTitle className="text-xs uppercase tracking-wider font-semibold text-gray-500">
@@ -478,7 +535,7 @@ export default function PurchaseOrderDetail() {
               <thead>
                 <tr className="bg-gray-50">
                   <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
-                    SKU ID
+                    Product / SKU
                   </th>
                   <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                     Quantity
@@ -506,8 +563,8 @@ export default function PurchaseOrderDetail() {
                         idx % 2 === 0 ? 'bg-white' : 'bg-white'
                       }`}
                     >
-                      <td className="px-6 py-4 align-top text-xs font-mono font-semibold text-[#0066CC]">
-                        {item.skuId}
+                      <td className="px-6 py-4 align-top text-xs font-semibold text-[#0066CC]">
+                        {skuMap[item.skuId] || item.skuId}
                       </td>
                       <td className="px-6 py-4 align-top text-sm text-right font-medium text-gray-900">
                         {item.quantity}
@@ -535,7 +592,7 @@ export default function PurchaseOrderDetail() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t border-gray-200">
           <div>
             <span className="block text-[10px] uppercase text-gray-500/70">Created By</span>
-            <span className="font-medium text-gray-900">{order.createdBy || 'Manual'}</span>
+            <span className="font-medium text-gray-900">{order.createdBy ? (userMap[order.createdBy] || order.createdBy) : 'Manual'}</span>
           </div>
           <div>
             <span className="block text-[10px] uppercase text-gray-500/70">Negotiation Run ID</span>

@@ -283,9 +283,11 @@ export default function Warehouses() {
       <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-4">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-[28px] font-bold text-gray-900 tracking-tight leading-none">Warehouses</h1>
-          <button onClick={() => openModal('create')} className="p-1.5 bg-[#E6F4FF] text-[#0066CC] hover:bg-[#D0E9FF] rounded-full font-bold transition-colors">
-            <Plus className="w-5 h-5" />
-          </button>
+          {['tenant'].includes(userRole || '') && (
+            <button onClick={() => openModal('create')} className="p-1.5 bg-[#E6F4FF] text-[#0066CC] hover:bg-[#D0E9FF] rounded-full font-bold transition-colors">
+              <Plus className="w-5 h-5" />
+            </button>
+          )}
         </div>
         
         <div className="relative">
@@ -390,7 +392,7 @@ export default function Warehouses() {
                 <button onClick={() => load(true)} disabled={refreshing} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-all shadow-sm disabled:opacity-50">
                   <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> Sync
                 </button>
-                {['tenant_owner', 'super_admin'].includes(userRole || '') && (
+                {['tenant'].includes(userRole || '') && (
                   selected.status === 'active' ? (
                     <button 
                       onClick={() => setDeleteTarget(selected)} 

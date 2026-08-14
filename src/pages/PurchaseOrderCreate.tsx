@@ -72,7 +72,7 @@ export default function PurchaseOrderCreate() {
   const token = getAccessTokenFromCookie();
   const role = getRoleFromToken(token);
   const warehouseIdFromJwt = getWarehouseIdFromToken(token);
-  const warehouseLocked = (role === 'warehouse_manager' || role === 'branch_manager') && !!warehouseIdFromJwt;
+  const warehouseLocked = (role === 'warehouse_manager' || role === 'clerk') && !!warehouseIdFromJwt;
 
   const skuMap = useMemo(() => new Map(skus.map((sku) => [sku.id, sku])), [skus]);
   const selectedVendor = useMemo(

@@ -35,8 +35,8 @@ import LandingPage from '@/pages/LandingPage';
 function AppLayout() {
   const user = useAuthStore((s) => s.user);
   
-  // If user is tenant_owner and doesn't have a warehouse, force onboarding
-  if (user?.role === 'tenant_owner' && !user.warehouseId) {
+  // If user is tenant and doesn't have a warehouse, force onboarding
+  if (user?.role === 'tenant' && !user.warehouseId) {
     return <Navigate to="/onboarding" replace />;
   }
 
@@ -58,7 +58,7 @@ function AppLayout() {
 
 function RootDashboard() {
   const user = useAuthStore((s) => s.user);
-  const isBranchRole = user?.role === 'branch_manager' || user?.role === 'warehouse_manager';
+  const isBranchRole = user?.role === 'warehouse_manager' || user?.role === 'clerk';
   const hasWarehouseId = !!getWarehouseIdFromToken(getAccessTokenFromCookie());
   if (isBranchRole && hasWarehouseId) {
     return <BranchDashboard />;
