@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircle, Boxes, Loader2, Plus, RefreshCw, Pencil, Trash2, TriangleAlert, TrashIcon, Search, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertCircle, Boxes, Loader2, Plus, RefreshCw, Pencil, Trash2, TriangleAlert, TrashIcon, Search, SlidersHorizontal, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+import { z } from 'zod';
 import { categoryApi } from '@/api/category.api';
 import type { CategoryResponse } from '@/types';
+
+const categoryFormSchema = z.object({
+  name: z
+    .string()
+    .min(2, 'Category name must be at least 2 characters')
+    .max(255, 'Category name must be at most 255 characters'),
+  description: z.string().max(1000, 'Description must be at most 1000 characters').optional().or(z.literal('')),
+});
 
 function formatDate(value: string): string {
   const date = new Date(value);
@@ -36,7 +44,7 @@ function LoadingState() {
   );
 }
 
-function EmptyState() {
+function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="py-16 flex flex-col items-center justify-center gap-3 text-gray-500">
       <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center border border-gray-200">
@@ -48,11 +56,9 @@ function EmptyState() {
           There are no categories in the system yet. Once added, they will appear here.
         </p>
       </div>
-      <Button asChild className="mt-2">
-        <Link to="/categories/new">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Category
-        </Link>
+      <Button className="mt-2" onClick={onCreate}>
+        <Plus className="h-4 w-4 mr-2" />
+        Add Category
       </Button>
     </div>
   );
@@ -77,7 +83,6 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 }
 
 export default function Categories() {
-  const navigate = useNavigate();
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +91,11 @@ export default function Categories() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<{ id: string; name: string } | null>(null);
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
+  const [modal, setModal] = useState<{ open: boolean; mode: 'create' | 'edit'; target: CategoryResponse | null }>({ open: false, mode: 'create', target: null });
+  const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
+  const [formErrors, setFormErrors] = useState<{ name?: string; description?: string }>({});
+  const [formLoading, setFormLoading] = useState(false);
+  const [formServerErr, setFormServerErr] = useState<string | null>(null);
 
   // Search & Pagination
   const [searchTerm, setSearchTerm] = useState('');
@@ -140,6 +150,64 @@ export default function Categories() {
     }
   };
 
+  const openCreateModal = () => {
+    setCategoryForm({ name: '', description: '' });
+    setFormErrors({});
+    setFormServerErr(null);
+    setModal({ open: true, mode: 'create', target: null });
+  };
+
+  const openEditModal = (category: CategoryResponse) => {
+    setCategoryForm({ name: category.name, description: category.description || '' });
+    setFormErrors({});
+    setFormServerErr(null);
+    setModal({ open: true, mode: 'edit', target: category });
+  };
+
+  const closeModal = () => {
+    setModal({ open: false, mode: 'create', target: null });
+    setCategoryForm({ name: '', description: '' });
+    setFormErrors({});
+    setFormServerErr(null);
+  };
+
+  const handleCategorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormServerErr(null);
+    setFormErrors({});
+
+    const parsed = categoryFormSchema.safeParse({
+      name: categoryForm.name.trim(),
+      description: categoryForm.description.trim() || undefined,
+    });
+    if (!parsed.success) {
+      const fieldErrors: { name?: string; description?: string } = {};
+      for (const issue of parsed.error.issues) {
+        const field = issue.path[0] as 'name' | 'description';
+        if (!fieldErrors[field]) {
+          fieldErrors[field] = issue.message;
+        }
+      }
+      setFormErrors(fieldErrors);
+      return;
+    }
+
+    setFormLoading(true);
+    try {
+      if (modal.mode === 'edit' && modal.target) {
+        await categoryApi.update(modal.target.id, parsed.data);
+      } else {
+        await categoryApi.create(parsed.data);
+      }
+      closeModal();
+      loadCategories(true);
+    } catch (err) {
+      setFormServerErr(err instanceof Error ? err.message : 'Failed to save category.');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
   const filteredCategories = categories.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     (c.description && c.description.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -163,13 +231,13 @@ export default function Categories() {
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </button>
-          <Link
-            to="/categories/new"
+          <button
+            onClick={openCreateModal}
             className="flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-bold text-[#0066CC] bg-[#E6F4FF] hover:bg-[#D0E9FF] shadow-sm transition-all"
           >
             <Plus className="h-4 w-4" />
             New Category
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -251,7 +319,7 @@ export default function Categories() {
                     </td>
                     <td className="px-6 py-4 align-middle text-right">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => navigate(`/categories/${category.id}/edit`)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-colors" title="Edit">
+                        <button onClick={() => openEditModal(category)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-colors" title="Edit">
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button onClick={() => confirmDelete(category.id, category.name)} disabled={deletingId === category.id} className="p-1.5 rounded-lg text-gray-400 hover:bg-[#FFD9DF]/50 hover:text-[#B30024] transition-colors" title="Delete">
@@ -304,9 +372,12 @@ export default function Categories() {
 
       {/* Delete Confirmation Modal */}
       {deleteModalOpen && categoryToDelete && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
           <div className="bg-white rounded-xl shadow-2xl max-w-[500px] w-full border-t-[6px] border-t-red-600 animate-in zoom-in-95 duration-200 overflow-hidden">
-            <div className="p-8 pb-6">
+            <div className="relative p-8 pb-6">
+              <button onClick={() => setDeleteModalOpen(false)} className="absolute top-4 right-4 p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
+                <X className="h-5 w-5" />
+              </button>
               <div className="flex items-start gap-5">
                 <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center shrink-0 border border-red-100">
                   <TrashIcon className="w-6 h-6 text-red-600" />
@@ -368,6 +439,90 @@ export default function Categories() {
                 {deletingId !== null ? <Loader2 className="w-5 h-5 animate-spin" /> : "Delete Category"}
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create/Edit Modal */}
+      {modal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
+          <div className="w-full max-w-[480px] bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-gray-50-low">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Boxes className="h-5 w-5 text-[#0066CC]" />
+                {modal.mode === 'create' ? 'Add New Category' : 'Edit Category'}
+              </h2>
+              <button onClick={closeModal} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCategorySubmit}>
+              <div className="p-6 space-y-4">
+                {formServerErr && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs font-semibold text-red-800 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{formServerErr}</span>
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="category-name" className="text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                    Category Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="category-name"
+                    type="text"
+                    placeholder="e.g. Electronics"
+                    value={categoryForm.name}
+                    onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                    className={`h-9 px-3 w-full bg-white rounded-lg border text-sm text-gray-900 outline-none transition-all focus:ring-1 ${
+                      formErrors.name
+                        ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
+                        : 'border-gray-200 focus:border-accent focus:ring-accent'
+                    }`}
+                  />
+                  {formErrors.name && <p className="text-[11px] text-red-500 mt-0.5">{formErrors.name}</p>}
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="category-description" className="text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                    Description
+                  </label>
+                  <textarea
+                    id="category-description"
+                    rows={3}
+                    placeholder="Optional details about this category"
+                    value={categoryForm.description}
+                    onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                    className={`w-full px-3 py-2 bg-white rounded-lg border text-sm text-gray-900 outline-none transition-all focus:ring-1 ${
+                      formErrors.description
+                        ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
+                        : 'border-gray-200 focus:border-accent focus:ring-accent'
+                    }`}
+                  />
+                  {formErrors.description && <p className="text-[11px] text-red-500 mt-0.5">{formErrors.description}</p>}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50-low border-t border-gray-200">
+                <button type="button" onClick={closeModal} disabled={formLoading} className="px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-all">
+                  Cancel
+                </button>
+                <Button type="submit" disabled={formLoading}>
+                  {formLoading ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
+                      Saving...
+                    </>
+                  ) : modal.mode === 'create' ? (
+                    'Create Category'
+                  ) : (
+                    'Save Changes'
+                  )}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

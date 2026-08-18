@@ -1,4 +1,5 @@
-import { Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import { Routes, Route, Outlet, Navigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from '@/components/Sidebar';
 import TopAppBar from '@/components/TopAppBar';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -27,14 +28,14 @@ import PurchaseOrderCreate from '@/pages/PurchaseOrderCreate';
 import Users from '@/pages/Users';
 import StockMovements from '@/pages/StockMovements';
 import Categories from '@/pages/Categories';
-import CategoryCreate from '@/pages/CategoryCreate';
 import Onboarding from '@/pages/Onboarding';
 import Notifications from '@/pages/Notifications';
 import LandingPage from '@/pages/LandingPage';
 
 function AppLayout() {
   const user = useAuthStore((s) => s.user);
-  
+  const location = useLocation();
+
   // If user is tenant and doesn't have a warehouse, force onboarding
   if (user?.role === 'tenant' && !user.warehouseId) {
     return <Navigate to="/onboarding" replace />;
@@ -47,7 +48,17 @@ function AppLayout() {
         <div className="flex-1 flex flex-col overflow-hidden">
           <TopAppBar />
           <main className="flex-1 overflow-y-auto p-8">
-            <Outlet />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
           </main>
         </div>
         <AssistantChat />
@@ -96,8 +107,6 @@ export default function App() {
           <Route element={<RequirePermission permission="sidebar.inventory" />}>
             <Route path="inventory" element={<Inventory />} />
             <Route path="categories" element={<Categories />} />
-            <Route path="categories/new" element={<CategoryCreate />} />
-            <Route path="categories/:id/edit" element={<CategoryCreate />} />
           </Route>
           
           <Route element={<RequirePermission permission="sidebar.vendors" />}>

@@ -591,7 +591,7 @@ export default function Users() {
 
       {/* CREATE USER MODAL */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
           <div className="w-full max-w-lg bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-gray-50-low">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -603,7 +603,7 @@ export default function Users() {
                   setIsCreateOpen(false);
                   setFieldErrors({});
                 }}
-                className="text-gray-500 hover:text-gray-900 p-1 rounded-lg"
+                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -735,7 +735,7 @@ export default function Users() {
 
       {/* EDIT USER MODAL */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
           <div className="w-full max-w-lg bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-gray-50-low">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -747,7 +747,7 @@ export default function Users() {
                   setEditingUser(null);
                   setFieldErrors({});
                 }}
-                className="text-gray-500 hover:text-gray-900 p-1 rounded-lg"
+                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -870,8 +870,17 @@ export default function Users() {
 
       {/* DELETE CONFIRMATION MODAL */}
       {deletingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150 p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150 p-6 space-y-4 relative">
+            <button
+              onClick={() => {
+                setDeletingUser(null);
+                setFormError(null);
+              }}
+              className="absolute top-4 right-4 p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
             <div className="flex items-center gap-3 text-red-600">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
                 <Ban className="h-5 w-5" />

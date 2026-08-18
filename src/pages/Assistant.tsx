@@ -269,7 +269,7 @@ export function AssistantChat() {
             </div>
             <button
               onClick={handleClose}
-              className="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+              className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
               aria-label="Close assistant"
             >
               <X style={{ width: 18, height: 18 }} />

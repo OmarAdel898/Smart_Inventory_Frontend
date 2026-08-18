@@ -15,8 +15,10 @@ import {
   Workflow,
   ChevronDown,
   Plug,
-  Database
+  Database,
+  X
 } from 'lucide-react';
+import { Reveal } from '@/components/ui/Reveal';
 
 // Reusable FAQ Item Component
 function FAQItem({ question, answer }: { question: string, answer: string }) {
@@ -67,16 +69,14 @@ function DemoModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative"
       >
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-900">
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+        <button onClick={onClose} className="absolute top-4 right-4 p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
+          <X className="h-5 w-5" />
         </button>
 
         {isSuccess ? (
@@ -180,7 +180,12 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-200">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-200"
+    >
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -316,6 +321,7 @@ export default function LandingPage() {
       {/* Trusted By */}
       <section className="py-10 border-y border-slate-200 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Reveal>
           <p className="text-center text-sm font-semibold text-slate-400 uppercase tracking-wider mb-8">Trusted by innovative companies worldwide</p>
           <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-60 grayscale">
              <div className="text-xl font-black text-slate-800">ACME Corp</div>
@@ -323,15 +329,18 @@ export default function LandingPage() {
              <div className="text-xl font-black text-slate-800">Nexus Industries</div>
              <div className="text-xl font-black text-slate-800">Quantum Logistics</div>
           </div>
+          </Reveal>
         </div>
       </section>
 
       {/* Features Section */}
       <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto bg-slate-50">
+        <Reveal>
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-4xl font-bold text-slate-900 mb-4">Empower Your Inventory with Smart Tools</h2>
           <p className="text-xl text-slate-600">Our platform is designed to simplify complex inventory management, providing actionable insights tailored to your workflow.</p>
         </div>
+        </Reveal>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {[
@@ -366,13 +375,15 @@ export default function LandingPage() {
               desc: 'Secure your data by assigning granular permissions to staff and branch managers.'
             }
           ].map((feature, i) => (
-            <div key={i} className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+            <Reveal key={i} delay={i * 0.06}>
+            <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
               <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center mb-6">
                 {feature.icon}
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-3">{feature.title}</h3>
               <p className="text-slate-600 leading-relaxed">{feature.desc}</p>
             </div>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -380,6 +391,7 @@ export default function LandingPage() {
       {/* How it Works Section */}
       <section id="how-it-works" className="py-24 bg-white border-y border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Reveal>
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-4xl font-bold text-slate-900 mb-4">How StockSavvy Works in 3 Simple Steps</h2>
             <p className="text-xl text-slate-600">A streamlined process to take you from chaos to complete control.</p>
@@ -406,12 +418,14 @@ export default function LandingPage() {
               <p className="text-slate-600">Let the platform automatically generate purchase orders and notify you before stock runs out.</p>
             </div>
           </div>
+          </Reveal>
         </div>
       </section>
 
       {/* Stats Section */}
       <section className="py-24 bg-slate-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Reveal>
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <div>
               <h2 className="text-4xl font-bold mb-6">Why ambitious businesses trust StockSavvy</h2>
@@ -440,11 +454,13 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+          </Reveal>
         </div>
       </section>
 
       {/* Integrations */}
       <section className="py-24 bg-white border-b border-slate-200">
+        <Reveal>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-slate-900 mb-4">Integrate into your stack</h2>
           <p className="text-lg text-slate-600 mb-12">StockSavvy connects seamlessly with the tools you already use.</p>
@@ -458,14 +474,17 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
+        </Reveal>
       </section>
 
       {/* Pricing Section */}
       <section id="pricing" className="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto bg-slate-50">
+        <Reveal>
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-4xl font-bold text-slate-900 mb-4">Simple, transparent pricing</h2>
           <p className="text-xl text-slate-600">Choose the perfect plan for your business needs. No hidden fees.</p>
         </div>
+        </Reveal>
 
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {isLoading ? (
@@ -514,6 +533,7 @@ export default function LandingPage() {
       {/* FAQ Section */}
       <section className="py-24 bg-white px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
+          <Reveal>
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 mb-4">Got questions? We've got answers.</h2>
             <p className="text-xl text-slate-600">Find out more about how StockSavvy works.</p>
@@ -537,11 +557,13 @@ export default function LandingPage() {
               answer="We use bank-level encryption (AES-256) for all data at rest and in transit. Role-based access controls ensure your staff only sees what they need to." 
             />
           </div>
+          </Reveal>
         </div>
       </section>
 
       {/* Final CTA Banner */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <Reveal>
         <div className="max-w-5xl mx-auto bg-[#0066CC] rounded-3xl p-12 text-center text-white shadow-2xl shadow-[#0066CC]/20">
           <h2 className="text-4xl font-bold mb-6">Ready to level up your inventory process?</h2>
           <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto">Join thousands of businesses managing everything inside StockSavvy. Try it free for 14 days, no credit card required.</p>
@@ -557,6 +579,7 @@ export default function LandingPage() {
             </button>
           </div>
         </div>
+        </Reveal>
       </section>
 
       {/* Footer */}
@@ -575,6 +598,6 @@ export default function LandingPage() {
       </footer>
 
       <DemoModal isOpen={isDemoModalOpen} onClose={() => setIsDemoModalOpen(false)} />
-    </div>
+    </motion.div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { api, ApiError } from '@/api/client';
 import { forgotPasswordSchema } from '@/features/auth/validations';
@@ -64,7 +65,12 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      className="flex min-h-screen items-center justify-center bg-gray-50 p-4"
+    >
       <div className="w-full max-w-[440px] bg-white rounded-3xl shadow-sm border border-gray-200 p-8 sm:p-10">
         <div className="flex items-center gap-3 mb-8 justify-center">
           <div className="w-10 h-10 bg-[#0066CC] text-white rounded-xl flex items-center justify-center shadow-sm">
@@ -124,6 +130,6 @@ export default function ForgotPassword() {
             </form>
           )}
         </div>
-      </div>
+      </motion.div>
   );
 }

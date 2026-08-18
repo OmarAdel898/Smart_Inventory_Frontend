@@ -23,7 +23,7 @@ export function StockThresholdDrawer({
   onSubmit, onClose,
 }: StockThresholdDrawerProps) {
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-navy/60 transition-opacity animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
       <div onClick={onClose} className="absolute inset-0 cursor-default" />
       <div className="relative w-full max-w-md bg-white h-full shadow-2xl border-l border-gray-200 flex flex-col justify-between z-10 animate-in slide-in-from-right duration-300">
         <div>
@@ -34,7 +34,7 @@ export function StockThresholdDrawer({
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 hover:bg-gray-50 rounded-lg text-gray-500 transition-colors"
+              className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
             >
               <X className="h-5 w-5" />
             </button>

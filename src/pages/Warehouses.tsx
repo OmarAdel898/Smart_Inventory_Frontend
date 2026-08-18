@@ -18,7 +18,8 @@ import {
   Search,
   MoreHorizontal,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -567,9 +568,12 @@ export default function Warehouses() {
       </div>
 
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
           <div className="w-full max-w-[400px] bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
-            <div className="p-6">
+            <div className="relative p-6">
+              <button onClick={() => setDeleteTarget(null)} className="absolute top-4 right-4 p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
+                <X className="h-5 w-5" />
+              </button>
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-12 h-12 rounded-full bg-[#FFD9DF] flex items-center justify-center text-[#B30024]">
                   <AlertCircle className="h-6 w-6" />
@@ -622,7 +626,7 @@ export default function Warehouses() {
 
       {/* Create/Edit Modal */}
       {modal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
           <div className="w-full max-w-[500px] bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-gray-50/50">
               <h2 className="text-[18px] font-bold text-gray-900 flex items-center gap-2">
@@ -631,9 +635,9 @@ export default function Warehouses() {
               </h2>
               <button
                 onClick={closeModal}
-                className="text-gray-400 hover:text-gray-900 p-1 rounded-lg transition-colors"
+                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
               >
-                <Ban className="w-5 h-5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
             

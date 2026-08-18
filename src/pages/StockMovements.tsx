@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getAccessTokenFromCookie } from '@/lib/auth';
 import { usePermissions } from '@/hooks/useCan';
-import { Search, SlidersHorizontal, ChevronLeft, ChevronRight, RefreshCw, Plus, Loader2, AlertCircle, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Search, SlidersHorizontal, ChevronLeft, ChevronRight, RefreshCw, Plus, Loader2, AlertCircle, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, X } from 'lucide-react';
 
 export type StockMovement = {
   id: string;
@@ -500,12 +500,12 @@ export default function StockMovements() {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
           <div className="w-full max-w-[500px] bg-white border border-gray-200 rounded-xl shadow-xl flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white rounded-t-xl shrink-0">
               <h3 className="text-lg font-bold text-gray-900">Record Movement</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-gray-900">
-                <span className="material-symbols-outlined">close</span>
+              <button onClick={() => setIsModalOpen(false)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
+                <X className="h-5 w-5" />
               </button>
             </div>
             

@@ -1,4 +1,4 @@
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { SkuResponse } from '@/types';
 
@@ -11,9 +11,12 @@ interface DeleteSkuModalProps {
 
 export function DeleteSkuModal({ skuToDelete, deleteLoading, onConfirm, onClose }: DeleteSkuModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/60 transition-opacity">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
       <div className="bg-white rounded-xl max-w-md w-full border border-gray-200 shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="p-6">
+        <div className="relative p-6">
+          <button onClick={onClose} className="absolute top-4 right-4 p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
           <div className="flex items-start gap-4">
             <div className="w-10 h-10 rounded-full bg-red-50 border border-red-200 flex items-center justify-center shrink-0">
               <Trash2 className="h-5 w-5 text-red-600" />

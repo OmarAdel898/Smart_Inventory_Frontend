@@ -747,7 +747,7 @@ export default function Inventory() {
 
       {/* CREATE / EDIT MODAL */}
       {(isCreateOpen || editingSku) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
           <div className="w-full max-w-[500px] bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-gray-50-low">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -760,7 +760,7 @@ export default function Inventory() {
                   setEditingSku(null);
                   setFieldErrors({});
                 }}
-                className="text-gray-500 hover:text-gray-900 p-1 rounded-lg"
+                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -897,9 +897,15 @@ export default function Inventory() {
 
       {/* DELETE MODAL */}
       {deletingSku && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
           <div className="w-full max-w-[400px] bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
-            <div className="p-6">
+            <div className="p-6 relative">
+              <button onClick={() => {
+                setDeletingSku(null);
+                setFormError(null);
+              }} className="absolute top-4 right-4 p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
+                <X className="h-5 w-5" />
+              </button>
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
                 <AlertCircle className="h-6 w-6" />
               </div>
@@ -937,7 +943,7 @@ export default function Inventory() {
 
       {/* THRESHOLDS MODAL */}
       {thresholdSku && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
           <div className="w-full max-w-[500px] bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-gray-50-low">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -949,7 +955,7 @@ export default function Inventory() {
                   setThresholdSku(null);
                   setSelectedStockLevel(null);
                 }}
-                className="text-gray-500 hover:text-gray-900 p-1 rounded-lg"
+                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>

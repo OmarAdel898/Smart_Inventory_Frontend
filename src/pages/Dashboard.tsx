@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   AlertTriangle,
   ArrowRight,
@@ -45,6 +46,7 @@ interface Warehouse {
   units?: number;
   stockValue?: number;
   coveragePct?: number;
+  capacityUsedPct?: number;
 }
 
 interface StockMovement {
@@ -104,6 +106,39 @@ function escapeHtml(value: unknown): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function CountUp({ value, duration = 900, delay = 0 }: { value: number; duration?: number; delay?: number }) {
+  const [display, setDisplay] = useState(0);
+  const fromRef = useRef(0);
+
+  useEffect(() => {
+    const from = fromRef.current;
+    if (from === value) return;
+    let frame: number;
+    let timeout: ReturnType<typeof setTimeout>;
+    timeout = setTimeout(() => {
+      const start = performance.now();
+      const tick = (now: number) => {
+        const p = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - p, 3);
+        const current = Math.round(from + (value - from) * eased);
+        setDisplay(current);
+        if (p < 1) {
+          frame = requestAnimationFrame(tick);
+        } else {
+          fromRef.current = value;
+        }
+      };
+      frame = requestAnimationFrame(tick);
+    }, delay);
+    return () => {
+      clearTimeout(timeout);
+      cancelAnimationFrame(frame);
+    };
+  }, [value, duration, delay]);
+
+  return <>{display.toLocaleString()}</>;
 }
 
 interface DashboardReportData {
@@ -483,20 +518,39 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="h-64 flex flex-col items-center justify-center gap-3 text-gray-500">
-        <Loader2 className="h-7 w-7 animate-spin text-[#0066CC]" />
-        <p className="text-sm font-medium">Loading system overview…</p>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-3">
+            <div className="skeleton h-5 w-48" />
+            <div className="skeleton h-9 w-72" />
+          </div>
+          <div className="skeleton h-10 w-56 rounded-full" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skeleton h-[140px] rounded-[2rem]" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 skeleton h-[320px] rounded-xl" />
+          <div className="skeleton h-[320px] rounded-xl" />
+        </div>
       </div>
     );
   }
 
-// Compute bar chart data from warehouses (coverage % = stock value vs target stock value)
+// Compute bar chart data from warehouses (score = stock coverage % blended with warehouse capacity usage %)
   const barData = warehouses.slice(0, 5).map((wh) => ({
     id: wh.id,
     name: wh.name,
-    pct: wh.coveragePct ?? 0,
+    pct: Math.min(100, Math.round(((wh.coveragePct ?? 0) + (wh.capacityUsedPct ?? 0)) / 2)),
     units: wh.units ?? 0,
   }));
+
+  const scoreColor = (pct: number) => {
+    if (pct <= 0) return 'linear-gradient(to top, #D1D5DB, #E5E7EB)';
+    return 'linear-gradient(to top, #93C5FD, #93C5FD)';
+  };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -509,7 +563,12 @@ export default function Dashboard() {
     <div className="space-y-6 pb-8">
 
       {/* ── Page Header ─────────────────────────────────────────── */}
-      <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+        className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between"
+      >
         <div>
           <p className="text-[18px] text-gray-600 mb-1 font-medium">
             {getGreeting()} {user?.name || user?.username || 'usef'},
@@ -527,7 +586,7 @@ export default function Dashboard() {
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* ── 4 KPI Cards ─────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -548,7 +607,7 @@ export default function Dashboard() {
             )}
           </div>
           <div className="mt-4">
-            <span className="text-3xl font-bold text-gray-900">{lowStock.length}</span>
+            <span className="text-3xl font-bold text-gray-900"><CountUp value={lowStock.length} /></span>
           </div>
         </div>
 
@@ -563,7 +622,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="mt-4">
-            <span className="text-3xl font-bold text-gray-900">{warehouses.length}</span>
+            <span className="text-3xl font-bold text-gray-900"><CountUp value={warehouses.length} /></span>
           </div>
         </div>
 
@@ -578,7 +637,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="mt-4">
-            <span className="text-3xl font-bold text-gray-900">{pendingPoCount}</span>
+            <span className="text-3xl font-bold text-gray-900"><CountUp value={pendingPoCount} /></span>
           </div>
         </div>
 
@@ -593,7 +652,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="mt-4">
-            <span className="text-3xl font-bold text-gray-900">{approvalCount}</span>
+            <span className="text-3xl font-bold text-gray-900"><CountUp value={approvalCount} /></span>
           </div>
         </div>
       </div>
@@ -602,17 +661,18 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         {/* Bar chart – Stock Value by Warehouse */}
-        <div className="lg:col-span-2 bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
+          className="lg:col-span-2 bg-white border border-gray-100 rounded-xl p-6 shadow-sm"
+        >
           <div className="flex justify-between items-start mb-8">
-            <h3 className="text-[16px] font-bold text-gray-900">Stock Coverage by Warehouse</h3>
+            <h3 className="text-[16px] font-bold text-gray-900">Capacity & Coverage Score by Warehouse</h3>
             <div className="flex items-center gap-4 text-[12px] font-semibold text-gray-500">
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-sm bg-[#E6F4FF] inline-block" />
-                Target
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-sm bg-[#0066CC] inline-block" />
-                Actual
+                <span className="w-3 h-3 rounded-sm inline-block" style={{ background: scoreColor(60) }} />
+                Score (coverage + capacity)
               </span>
             </div>
           </div>
@@ -623,26 +683,42 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="flex gap-6 h-[220px] w-full overflow-x-auto pb-4 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
-              {barData.map((wh) => (
-                <div key={wh.id} className="flex flex-col items-center h-full min-w-[60px] shrink-0">
-                  <div className="text-gray-500 font-mono font-bold text-[11px] mb-2">{wh.pct}%</div>
+              {barData.map((wh, i) => (
+                <motion.div
+                  key={wh.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.1 + i * 0.07, ease: [0.22, 1, 0.36, 1] }}
+                  className="flex flex-col items-center h-full min-w-[60px] shrink-0"
+                >
+                  <div className="text-gray-500 font-mono font-bold text-[11px] mb-2">
+                    <CountUp value={wh.pct} duration={750} delay={250 + i * 70} />%
+                  </div>
                   <div className="w-12 bg-[#E6F4FF] rounded-t-lg flex-1 flex items-end overflow-hidden">
-                    <div
-                      className="w-full bg-[#0066CC] rounded-t-lg transition-all duration-700"
-                      style={{ height: `${Math.min(100, wh.pct)}%` }}
+                    <motion.div
+                      className="w-full h-full rounded-t-lg"
+                      initial={{ scaleY: 0 }}
+                      animate={{ scaleY: Math.min(100, wh.pct) / 100 }}
+                      style={{ transformOrigin: 'bottom', background: scoreColor(wh.pct) }}
+                      transition={{ duration: 1.1, delay: 0.25 + i * 0.07, ease: [0.22, 1, 0.36, 1] }}
                     />
                   </div>
                   <div className="font-bold text-gray-800 text-[12px] truncate w-16 text-center mt-3" title={wh.name}>
                     {wh.name}
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
-        </div>
+        </motion.div>
 
         {/* AI Efficiency Insight */}
-        <div className="bg-[#0066CC] text-white rounded-xl p-6 shadow-sm flex flex-col justify-between min-h-[280px]">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+          className="bg-[#0066CC] text-white rounded-xl p-6 shadow-sm flex flex-col justify-between min-h-[280px]"
+        >
           <div>
             <div className="flex items-center gap-3 mb-5">
               <div className="p-2 bg-white/10 rounded-lg">
@@ -682,7 +758,7 @@ export default function Dashboard() {
               </button>
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* ── Low Stock Alerts Table ───────────────────────────────── */}
@@ -739,8 +815,11 @@ export default function Dashboard() {
                   </tr>
                 ) : (
                   paginatedLowStock.map((item, idx) => (
-                    <tr
+                    <motion.tr
                       key={item.id || idx}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.35, delay: 0.35 + idx * 0.05, ease: [0.22, 1, 0.36, 1] }}
                       className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors last:border-0 group"
                     >
                       <td className="px-6 py-4 align-middle">
@@ -775,7 +854,7 @@ export default function Dashboard() {
                           </button>
                         </div>
                       </td>
-                    </tr>
+                    </motion.tr>
                   ))
                 )}
               </tbody>
@@ -929,7 +1008,7 @@ export default function Dashboard() {
 
       {/* THRESHOLDS MODAL */}
       {thresholdItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
               <h2 className="text-[18px] font-bold text-gray-900 flex items-center gap-2">
@@ -941,7 +1020,7 @@ export default function Dashboard() {
                   setThresholdItem(null);
                   setSelectedStockLevel(null);
                 }}
-                className="text-gray-400 hover:bg-gray-100 hover:text-gray-900 p-2 rounded-full transition-colors"
+                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>

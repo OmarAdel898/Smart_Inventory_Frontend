@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { X } from 'lucide-react';
 import { approveApproval, rejectApproval, negotiateApproval } from '@/api/approvals';
 import { API_BASE } from '@/api/_shared';
 import { useAuthStore } from '@/store/authStore';
@@ -14,29 +15,44 @@ interface ApprovalSideSheetProps {
   onApproved?: (approval: Approval, createdPoIds: string[]) => void;
 }
 
-const parseReasoning = (text: string) => {
-  if (!text) return <p className="text-body-md text-gray-500 italic">No reasoning provided.</p>;
-
-  if (text.includes('\n')) {
-    return <p className="text-body-md text-gray-900 leading-relaxed whitespace-pre-wrap">{text}</p>;
-  }
-
-  const sentences = text.split(/(?<=\.)\s+/).filter(s => s.trim().length > 0);
+const HighlightedText = ({ text }: { text: string }) => {
+  const terms = ['zero', 'tco', 'holding cost', 'sole vendor', 'capital efficiency', 'excess inventory', 'minimal ordering', 'penalized', 'minimally replenish'];
+  const patternSource = `(\\b\\d+(?:\\.\\d+)?\\b|\\b${terms.join('\\b|\\b')}\\b)`;
+  const regex = new RegExp(patternSource, 'gi');
+  const matchRegex = new RegExp(`^${patternSource}$`, 'i');
   
-  if (sentences.length <= 2) {
-    return <p className="text-body-md text-gray-900 leading-relaxed">{text}</p>;
-  }
+  const parts = text.split(regex);
+  
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (!part) return null;
+        if (matchRegex.test(part)) {
+          return <span key={i} className="font-semibold text-gray-900">{part}</span>;
+        }
+        return <span key={i} className="text-gray-700">{part}</span>;
+      })}
+    </>
+  );
+};
+
+const parseReasoning = (text: string) => {
+  if (!text) return <p className="text-body-md text-gray-500 italic px-2">No reasoning provided.</p>;
+
+  // Normalize spaces and remove newlines so the paragraph becomes a flat string for sentence splitting
+  const cleanText = text.replace(/\s+/g, ' ').trim();
+  const sentences = cleanText.split(/(?<=\.)\s+/).filter(s => s.trim().length > 0);
 
   const categories = [
-    { title: 'Inventory Status', icon: 'inventory_2', items: [] as string[] },
-    { title: 'Recommendation Rationale', icon: 'lightbulb', items: [] as string[] },
-    { title: 'Financial Impact & Scoring', icon: 'payments', items: [] as string[] },
-    { title: 'Other Notes', icon: 'info', items: [] as string[] }
+    { id: 'status', title: 'Inventory Status', icon: 'inventory_2', color: 'text-blue-700', bg: 'bg-blue-50/50', border: 'border-blue-200', headBg: 'bg-blue-100/50', items: [] as string[] },
+    { id: 'action', title: 'Recommendation Rationale', icon: 'lightbulb', color: 'text-amber-700', bg: 'bg-amber-50/50', border: 'border-amber-200', headBg: 'bg-amber-100/50', items: [] as string[] },
+    { id: 'financial', title: 'Financial Impact', icon: 'payments', color: 'text-emerald-700', bg: 'bg-emerald-50/50', border: 'border-emerald-200', headBg: 'bg-emerald-100/50', items: [] as string[] },
+    { id: 'other', title: 'Additional Notes', icon: 'info', color: 'text-gray-700', bg: 'bg-gray-50/50', border: 'border-gray-200', headBg: 'bg-gray-100/50', items: [] as string[] }
   ];
 
   sentences.forEach(s => {
     const lower = s.toLowerCase();
-    if (lower.includes('tco') || lower.includes('cost') || lower.includes('capital') || lower.includes('efficiency')) {
+    if (lower.includes('tco') || lower.includes('cost') || lower.includes('capital') || lower.includes('efficiency') || lower.includes('penalized')) {
       categories[2].items.push(s);
     } else if (lower.includes('quantity') || lower.includes('capacity') || lower.includes('vendor') || lower.includes('suggests') || lower.includes('recommended') || lower.includes('replenish')) {
       categories[1].items.push(s);
@@ -47,43 +63,47 @@ const parseReasoning = (text: string) => {
     }
   });
 
-  const hasCategorized = categories.some((c, i) => i < 3 && c.items.length > 0);
+  const activeCategories = categories.filter(c => c.items.length > 0);
 
-  if (hasCategorized) {
+  // If we couldn't categorize into the main 3, just show a plain list but nicely formatted
+  if (activeCategories.length === 1 && activeCategories[0].id === 'other') {
     return (
-      <div className="space-y-4">
-        {categories.map(cat => {
-          if (cat.items.length === 0) return null;
-          return (
-            <div key={cat.title} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-              <h5 className="text-label-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px] text-secondary">{cat.icon}</span>
-                {cat.title}
-              </h5>
-              <ul className="space-y-2">
-                {cat.items.map((item, i) => (
-                  <li key={i} className="flex gap-2 text-body-md text-gray-700 items-start leading-snug">
-                    <span className="text-secondary/50 mt-0.5">•</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
-      </div>
+      <ul className="space-y-3 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+        {sentences.map((sentence, idx) => (
+          <li key={idx} className="flex gap-3 text-body-md text-gray-800 leading-relaxed items-start">
+             <span className="material-symbols-outlined text-secondary text-[18px] shrink-0 mt-0.5">check_circle</span>
+             <div><HighlightedText text={sentence} /></div>
+          </li>
+        ))}
+      </ul>
     );
   }
 
   return (
-    <ul className="space-y-3">
-      {sentences.map((sentence, idx) => (
-        <li key={idx} className="flex gap-3 text-body-md text-gray-800 leading-relaxed items-start">
-           <span className="material-symbols-outlined text-secondary text-[18px] shrink-0 mt-0.5">check_circle</span>
-           <span>{sentence}</span>
-        </li>
+    <div className="flex flex-col gap-3">
+      {activeCategories.map(cat => (
+        <div key={cat.id} className={`rounded-xl border ${cat.border} ${cat.bg} overflow-hidden shadow-sm`}>
+          <div className={`px-4 py-2.5 border-b border-black/5 ${cat.headBg} flex items-center gap-2`}>
+            <span className={`material-symbols-outlined text-[18px] ${cat.color}`}>{cat.icon}</span>
+            <h5 className={`text-label-md font-bold ${cat.color} uppercase tracking-wider text-[11px]`}>{cat.title}</h5>
+          </div>
+          <ul className="p-3.5 space-y-2.5">
+            {cat.items.map((item, i) => (
+              <li key={i} className="flex gap-2.5 text-body-md items-start leading-relaxed">
+                {cat.items.length > 1 ? (
+                  <span className={`${cat.color} opacity-40 mt-[3px] shrink-0 text-[10px]`}>•</span>
+                ) : (
+                  <span className={`${cat.color} opacity-0 mt-[3px] shrink-0 w-1 hidden`}></span>
+                )}
+                <div className="flex-1">
+                  <HighlightedText text={item} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 };
 
@@ -175,7 +195,7 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
     <>
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-[60] overlay-bg"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] overlay-bg transition-opacity animate-in fade-in duration-200"
           onClick={onClose}
         />
       )}
@@ -193,8 +213,8 @@ export default function ApprovalSideSheet({ isOpen, approval, onClose, onStatusC
                 : '\u00A0'}
             </p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-50-low rounded-full transition-colors">
-            <span className="material-symbols-outlined">close</span>
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
+            <X className="h-5 w-5" />
           </button>
         </div>
 

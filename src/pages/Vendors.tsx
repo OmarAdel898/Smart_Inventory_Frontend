@@ -522,14 +522,14 @@ export default function Vendors() {
 
       {/* CREATE / EDIT MODAL */}
       {modal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
           <div className="w-full max-w-[480px] bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-gray-50-low">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-[#0066CC]" />
                 {modal.mode === 'create' ? 'Add New Vendor' : 'Edit Vendor'}
               </h2>
-              <button onClick={closeModal} className="text-gray-500 hover:text-gray-900 p-1 rounded-lg">
+              <button onClick={closeModal} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -627,14 +627,14 @@ export default function Vendors() {
 
       {/* DETAIL MODAL */}
       {detailVendor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
           <div className="w-full max-w-[520px] bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-gray-50-low">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-[#0066CC]" />
                 Vendor Details
               </h2>
-              <button onClick={() => setDetailVendor(null)} className="text-gray-500 hover:text-gray-900 p-1 rounded-lg">
+              <button onClick={() => setDetailVendor(null)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -726,9 +726,12 @@ export default function Vendors() {
 
       {/* DELETE CONFIRM MODAL */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
           <div className="w-full max-w-[400px] bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
-            <div className="p-6">
+            <div className="p-6 relative">
+              <button onClick={() => { setDeleteTarget(null); setDeleteError(null); }} className="absolute top-4 right-4 p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
+                <X className="h-5 w-5" />
+              </button>
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
                 <AlertCircle className="h-6 w-6" />
               </div>

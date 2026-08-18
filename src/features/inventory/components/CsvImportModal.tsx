@@ -22,13 +22,13 @@ export function CsvImportModal({
   onDrag, onDrop, onFileChange, onUpload, onDownloadErrors, onClose,
 }: CsvImportModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/60 transition-opacity">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
       <div className="bg-white rounded-xl max-w-2xl w-full border border-gray-200 shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">CSV Catalog Import</h3>
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-gray-50 rounded-lg text-gray-500 transition-colors"
+            className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
