@@ -1,14 +1,30 @@
 import { useState, useEffect, useMemo } from 'react';
-import { fetchApprovals, approveApproval, rejectApproval } from '@/api/approvals';
+import { Link } from 'react-router-dom';
+import { fetchApprovals, approveApproval, editApproval } from '@/api/approvals';
+import Toast from '@/pages/ApprovalQueue/Toast';
 import type { Approval } from '@/pages/ApprovalQueue/types';
 import { useAuthStore } from '@/store/authStore';
 import { format } from 'date-fns';
+
+function toNum(value: string, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function discountOf(payload: any): number {
+  return Number(payload?.finalDiscountPercent ?? payload?.final ?? payload?.requestedDiscountPercent ?? 0);
+}
 
 export default function Negotiations() {
   const [negotiations, setNegotiations] = useState<Approval[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState('');
+  const [editedDiscount, setEditedDiscount] = useState('');
+  const [editedTerms, setEditedTerms] = useState('');
+  const [editedShipping, setEditedShipping] = useState('');
+  const [saveMsg, setSaveMsg] = useState('');
+  const [toast, setToast] = useState<{ message: string; poId?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const user = useAuthStore((s) => s.user);
@@ -24,9 +40,16 @@ export default function Negotiations() {
     loadNegotiations();
   }, []);
 
-  async function loadNegotiations() {
+  useEffect(() => {
+    const timer = setInterval(() => {
+      loadNegotiations(true);
+    }, 20000);
+    return () => clearInterval(timer);
+  }, []);
+
+  async function loadNegotiations(silent = false) {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const tokenMatch = document.cookie.match(/(?:^|;\s*)token=([^;]*)/);
       const token = tokenMatch ? decodeURIComponent(tokenMatch[1]) : null;
       const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
@@ -36,9 +59,7 @@ export default function Negotiations() {
       ]);
       const pending = res.data.filter(a => a.status === 'pending');
       setNegotiations(pending);
-      if (pending.length > 0 && !selectedId) {
-        setSelectedId(pending[0].id);
-      }
+      setSelectedId(prev => prev && pending.some(n => n.id === prev) ? prev : (pending[0]?.id ?? null));
       if (skusRes.ok) {
         const skusBody = await skusRes.json();
         setSkus(skusBody?.data || (Array.isArray(skusBody) ? skusBody : []));
@@ -51,21 +72,53 @@ export default function Negotiations() {
     }
   }
 
+  function buildEditedPayload(): object {
+    const payload = selected?.payload as any;
+    return {
+      ...(payload ?? {}),
+      emailContent: editedContent,
+      finalDiscountPercent: toNum(editedDiscount, discountOf(payload)),
+      paymentTermsDays: Math.round(Math.max(0, toNum(editedTerms, 30))),
+      shippingCost: Math.max(0, toNum(editedShipping, 50)),
+    };
+  }
+
   async function handleApprove(id: string) {
     if (!user || !selected) return;
     try {
-      // Send edited content if it was changed
+      const stepNumber = selected.stepNumber ?? 1;
       const payload = { reviewedBy: user.id } as any;
-      if (editedContent && editedContent !== selected.payload?.emailContent) {
-        payload.editedPayload = {
-          ...selected.payload,
-          emailContent: editedContent
-        };
+      const edited = buildEditedPayload();
+      const changed =
+        editedContent !== (selected.payload?.emailContent ?? '') ||
+        toNum(editedDiscount, 0) !== discountOf(selected.payload) ||
+        toNum(editedTerms, 30) !== toNum((selected.payload as any)?.paymentTermsDays, 30) ||
+        toNum(editedShipping, 50) !== toNum((selected.payload as any)?.shippingCost, 50);
+      if (changed) {
+        payload.editedPayload = edited;
       }
       
-      await approveApproval(id, payload);
-      setNegotiations(prev => prev.filter(n => n.id !== id));
-      if (selectedId === id) setSelectedId(null);
+      const result = await approveApproval(id, payload);
+      const poIds = result.data?.createdPoIds ?? [];
+      if (stepNumber === 2 && poIds.length > 0) {
+        setToast({ message: `Purchase order created from negotiation.`, poId: poIds[0] });
+      } else if (stepNumber === 1) {
+        setToast({ message: 'Offer sent to vendor — awaiting their response (auto-refreshes)...' });
+      }
+      await loadNegotiations(true);
+    } catch (err: any) {
+      alert(err.message);
+    }
+  }
+
+  async function handleSaveDraft() {
+    if (!user || !selected) return;
+    try {
+      const edited = buildEditedPayload();
+      const result = await editApproval(selected.id, edited);
+      setNegotiations(prev => prev.map(n => n.id === selected.id ? { ...n, payload: result.data.payload } : n));
+      setSaveMsg('Draft saved. Reflects in the approval queue.');
+      setTimeout(() => setSaveMsg(''), 4000);
     } catch (err: any) {
       alert(err.message);
     }
@@ -75,10 +128,16 @@ export default function Negotiations() {
 
   useEffect(() => {
     if (selected) {
+      const payload = selected.payload as any;
       setIsEditing(false);
+      setSaveMsg('');
       setEditedContent((selected.payload?.emailContent as string) || '');
+      setEditedDiscount(String(discountOf(payload)));
+      setEditedTerms(String(toNum(payload?.paymentTermsDays, 30)));
+      setEditedShipping(String(toNum(payload?.shippingCost, 50)));
     }
-  }, [selectedId, selected]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
 
   if (loading) {
     return (
@@ -117,6 +176,18 @@ export default function Negotiations() {
 
   return (
     <div className="flex h-full -m-8 bg-gray-50/50">
+      {toast && (
+        <Toast message={toast.message} variant="success" onDismiss={() => setToast(null)}>
+          {toast.poId && (
+            <Link
+              to={`/purchase-orders/${toast.poId}`}
+              className="text-xs bg-white/20 hover:bg-white/30 rounded px-2 py-1 font-medium transition-colors"
+            >
+              View PO #{toast.poId.substring(0, 8)}
+            </Link>
+          )}
+        </Toast>
+      )}
       {/* List Sidebar */}
       <div className="w-80 border-r border-gray-200/60 bg-white/80 backdrop-blur-xl flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10">
         <div className="p-6 border-b border-gray-100 z-10 shrink-0">
@@ -185,6 +256,18 @@ export default function Negotiations() {
               </div>
               
               <div className="flex items-center gap-3">
+                {saveMsg && (
+                  <span className="text-sm font-medium text-green-600 bg-green-50 border border-green-200 px-3 py-2 rounded-lg">
+                    {saveMsg}
+                  </span>
+                )}
+                <button 
+                  onClick={() => handleSaveDraft()}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-white text-gray-700 font-medium rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+                >
+                  <span className="material-symbols-outlined text-[18px]">save</span>
+                  Save Draft
+                </button>
                 <button 
                   onClick={() => setIsEditing(true)}
                   className="flex items-center gap-2 px-4 py-2.5 bg-white text-gray-700 font-medium rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
@@ -281,7 +364,49 @@ export default function Negotiations() {
                         </div>
                         <div className="p-6">
                           {isEditing ? (
-                            <div className="flex flex-col gap-3">
+                            <div className="flex flex-col gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="flex flex-col gap-1.5">
+                                  <label className="text-sm font-medium text-gray-600">Discount</label>
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      className="w-24 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm text-gray-800 bg-white"
+                                      value={editedDiscount}
+                                      onChange={(e) => setEditedDiscount(e.target.value)}
+                                    />
+                                    <span className="text-sm text-gray-500 font-medium">%</span>
+                                  </div>
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                  <label className="text-sm font-medium text-gray-600">Payment Terms</label>
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      className="w-24 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm text-gray-800 bg-white"
+                                      value={editedTerms}
+                                      onChange={(e) => setEditedTerms(e.target.value)}
+                                    />
+                                    <span className="text-sm text-gray-500 font-medium">days</span>
+                                  </div>
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                  <label className="text-sm font-medium text-gray-600">Shipping Cost</label>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-sm text-gray-500 font-medium">$</span>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      className="w-24 px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm text-gray-800 bg-white"
+                                      value={editedShipping}
+                                      onChange={(e) => setEditedShipping(e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
                               <textarea
                                 className="w-full h-48 p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm text-gray-800 font-sans resize-y bg-white"
                                 value={editedContent}
@@ -291,15 +416,36 @@ export default function Negotiations() {
                               <div className="flex justify-end gap-2">
                                 <button onClick={() => {
                                   setIsEditing(false);
+                                  const payload = selected.payload as any;
                                   setEditedContent((selected.payload?.emailContent as string) || '');
+                                  setEditedDiscount(String(discountOf(payload)));
+                                  setEditedTerms(String(toNum(payload?.paymentTermsDays, 30)));
+                                  setEditedShipping(String(toNum(payload?.shippingCost, 50)));
                                 }} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
+                                <button onClick={() => handleSaveDraft()} className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors shadow-sm">Save Draft</button>
                                 <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm shadow-indigo-200">Done</button>
                               </div>
                             </div>
                           ) : (
-                            <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap font-sans">
-                              {editedContent || 'Drafted email content will appear here.'}
-                            </p>
+                            <div>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                                <div className="flex items-center justify-between bg-gray-50/70 border border-gray-100 rounded-lg px-3 py-2">
+                                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Discount</span>
+                                  <span className="text-sm font-bold text-indigo-600">{editedDiscount || 0}%</span>
+                                </div>
+                                <div className="flex items-center justify-between bg-gray-50/70 border border-gray-100 rounded-lg px-3 py-2">
+                                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Payment Terms</span>
+                                  <span className="text-sm font-bold text-gray-800">Net {editedTerms || 30}</span>
+                                </div>
+                                <div className="flex items-center justify-between bg-gray-50/70 border border-gray-100 rounded-lg px-3 py-2">
+                                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Shipping</span>
+                                  <span className="text-sm font-bold text-gray-800">${editedShipping || 50}</span>
+                                </div>
+                              </div>
+                              <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap font-sans">
+                                {editedContent || 'Drafted email content will appear here.'}
+                              </p>
+                            </div>
                           )}
                         </div>
                       </div>

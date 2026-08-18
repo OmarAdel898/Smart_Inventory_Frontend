@@ -64,6 +64,19 @@ export async function approveApproval(id: string, body: { reviewedBy: string; ed
   return handleResponse<{ success: boolean; data: Approval & { createdPoIds?: string[] } }>(res);
 }
 
+export async function editApproval(id: string, editedPayload: object) {
+  const user = useAuthStore.getState().user;
+  const perms = getRolePermissions(user?.role || '');
+  assertPermission(perms.includes('approvals.editPayload'), 'edit draft');
+
+  const res = await fetch(`${BASE_URL}/approvals/${id}/edit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ editedPayload }),
+  });
+  return handleResponse<{ success: boolean; data: Approval }>(res);
+}
+
 export async function rejectApproval(id: string, body: { reviewedBy: string }) {
   const user = useAuthStore.getState().user;
   const perms = getRolePermissions(user?.role || '');
