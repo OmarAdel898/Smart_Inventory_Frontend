@@ -83,6 +83,7 @@ export interface WarehouseResponse {
   status: 'active' | 'inactive';
   tenantId: string;
   isMain: boolean;
+  capacityUnits?: number | null;
   createdAt?: string;
   updatedAt?: string;
 }

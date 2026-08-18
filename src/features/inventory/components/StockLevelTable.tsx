@@ -21,21 +21,21 @@ export function StockLevelTable({
 }: StockLevelTableProps) {
   return (
     <>
-      <Card className="overflow-hidden border-outline-variant/60 shadow-sm">
-        <CardHeader className="border-b border-outline-variant/50 bg-surface">
-          <CardTitle className="text-xl text-on-surface">Stock Threshold Matrix</CardTitle>
+      <Card className="overflow-hidden border-gray-200 shadow-sm">
+        <CardHeader className="border-b border-gray-200 bg-white">
+          <CardTitle className="text-xl text-gray-900">Stock Threshold Matrix</CardTitle>
           <CardDescription>
             Live monitoring of quantities and safe operating buffers across nodes.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {stockLoading ? (
-            <div className="py-20 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-              <Loader2 className="h-8 w-8 animate-spin text-accent" />
+            <div className="py-20 flex flex-col items-center justify-center gap-3 text-gray-500">
+              <Loader2 className="h-8 w-8 animate-spin text-[#0066CC]" />
               <p className="text-sm font-medium">Loading stock levels...</p>
             </div>
           ) : stockError ? (
-            <div className="py-20 flex flex-col items-center justify-center gap-4 text-on-surface-variant">
+            <div className="py-20 flex flex-col items-center justify-center gap-4 text-gray-500">
               <AlertCircle className="h-8 w-8 text-red-500" />
               <p className="text-sm font-medium">Unable to load stock levels: {stockError}</p>
               <Button variant="outline" onClick={onRetry} className="gap-2">
@@ -43,63 +43,63 @@ export function StockLevelTable({
               </Button>
             </div>
           ) : stockLevels.length === 0 ? (
-            <div className="py-20 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-              <AlertCircle className="h-8 w-8 text-accent" />
-              <p className="text-sm font-medium text-on-surface">No stock levels recorded</p>
+            <div className="py-20 flex flex-col items-center justify-center gap-3 text-gray-500">
+              <AlertCircle className="h-8 w-8 text-[#0066CC]" />
+              <p className="text-sm font-medium text-gray-900">No stock levels recorded</p>
               <p className="text-xs">Verify warehouse associations or add movements to populate quantities.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full border-separate border-spacing-0">
                 <thead>
-                  <tr className="bg-surface-container/70 border-b border-outline-variant">
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                       SKU Name
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                       Warehouse Node
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                       Quantity On Hand
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                       Safety Stock
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                       Reorder Threshold
                     </th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                    <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                       Status Alert
                     </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                    <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-surface">
+                <tbody className="bg-white">
                   {stockLevels.map((item, index) => {
                     const isLowStock = item.quantity <= item.reorderThreshold;
                     const isOutOfStock = item.quantity === 0;
                     return (
                       <tr
                         key={item.id}
-                        className={`border-t border-outline-variant/40 transition-colors hover:bg-surface-container/30 ${
-                          index % 2 === 0 ? 'bg-surface' : 'bg-surface-lowest'
+                        className={`border-t border-gray-200 transition-colors hover:bg-gray-50 ${
+                          index % 2 === 0 ? 'bg-white' : 'bg-white'
                         }`}
                       >
-                        <td className="px-6 py-4 align-middle text-sm font-semibold text-on-surface">
+                        <td className="px-6 py-4 align-middle text-sm font-semibold text-gray-900">
                           {item.skuName}
                         </td>
-                        <td className="px-6 py-4 align-middle text-sm text-on-surface-variant">
+                        <td className="px-6 py-4 align-middle text-sm text-gray-500">
                           {item.warehouseName}
                         </td>
-                        <td className="px-6 py-4 align-middle text-right text-sm font-bold text-on-surface font-mono">
+                        <td className="px-6 py-4 align-middle text-right text-sm font-bold text-gray-900 font-mono">
                           {item.quantity.toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 align-middle text-right text-sm text-on-surface-variant font-mono">
+                        <td className="px-6 py-4 align-middle text-right text-sm text-gray-500 font-mono">
                           {item.safetyStock.toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 align-middle text-right text-sm text-on-surface-variant font-mono">
+                        <td className="px-6 py-4 align-middle text-right text-sm text-gray-500 font-mono">
                           {item.reorderThreshold.toLocaleString()}
                         </td>
                         <td className="px-6 py-4 align-middle text-center">
@@ -120,7 +120,7 @@ export function StockLevelTable({
                         <td className="px-6 py-4 align-middle text-right text-sm">
                           <button
                             onClick={() => onAdjust(item)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded border border-outline-variant bg-surface hover:bg-surface-container-high transition-colors"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded border border-gray-200 bg-white hover:bg-gray-100 transition-colors"
                             title="Adjust Thresholds"
                           >
                             <Sliders className="h-3 w-3" /> Adjust
@@ -137,10 +137,10 @@ export function StockLevelTable({
       </Card>
 
       {stockMeta && stockMeta.totalPages > 1 && (
-        <div className="flex items-center justify-between border-t border-outline-variant/40 pt-4 px-2">
-          <span className="text-xs text-on-surface-variant">
-            Showing page <strong className="text-on-surface font-medium">{stockMeta.page}</strong> of{' '}
-            <strong className="text-on-surface font-medium">{stockMeta.totalPages}</strong> ({stockMeta.total} items)
+        <div className="flex items-center justify-between border-t border-gray-200 pt-4 px-2">
+          <span className="text-xs text-gray-500">
+            Showing page <strong className="text-gray-900 font-medium">{stockMeta.page}</strong> of{' '}
+            <strong className="text-gray-900 font-medium">{stockMeta.totalPages}</strong> ({stockMeta.total} items)
           </span>
           <div className="flex items-center gap-2">
             <Button

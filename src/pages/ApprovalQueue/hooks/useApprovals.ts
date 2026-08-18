@@ -13,7 +13,7 @@ interface UseApprovalsReturn {
   hasNext: boolean;
   filters: Filters;
   setFilters: (f: Filters) => void;
-  updateApprovalStatus: (id: string, status: 'approved' | 'rejected') => void;
+  updateApprovalStatus: (id: string, status: 'approved' | 'rejected' | 'deferred') => void;
   prevPage: () => void;
   nextPage: () => void;
   refetch: () => void;
@@ -36,7 +36,10 @@ export function useApprovals(): UseApprovalsReturn {
       const agentTypeParam = filters.agentType !== 'All Types'
         ? filters.agentType.toLowerCase().replace(' agent', '')
         : undefined;
-      const res = await fetchApprovals({ agentType: agentTypeParam, page, limit });
+      const statusParam = filters.status !== 'All Statuses'
+        ? filters.status.toLowerCase().replace(' review', '')
+        : undefined;
+      const res = await fetchApprovals({ agentType: agentTypeParam, status: statusParam, page, limit });
       setApprovals(res.data);
       setTotal(res.meta.total);
       setTotalPages(res.meta.totalPages);
@@ -45,11 +48,11 @@ export function useApprovals(): UseApprovalsReturn {
     } finally {
       setLoading(false);
     }
-  }, [filters.agentType, page, limit]);
+  }, [filters.agentType, filters.status, page, limit]);
 
   useEffect(() => { load(); }, [load]);
 
-  const updateApprovalStatus = useCallback((id: string, status: 'approved' | 'rejected') => {
+  const updateApprovalStatus = useCallback((id: string, status: 'approved' | 'rejected' | 'deferred') => {
     setApprovals((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status } : a)),
     );

@@ -7,6 +7,7 @@ export const skuSchema = z.object({
   cost: z.number().positive('Cost must be greater than 0'),
   price: z.number().positive('Price must be greater than 0'),
   preferredVendorId: z.string().optional().or(z.literal('')),
+  warehouseId: z.string().optional().or(z.literal('')),
 });
 
 export type SkuInput = z.infer<typeof skuSchema>;

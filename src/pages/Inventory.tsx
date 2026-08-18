@@ -13,6 +13,9 @@ import {
   Box,
   Upload,
   X,
+  ArrowLeft,
+  ArrowRight,
+  MoreVertical,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -60,12 +63,26 @@ export default function Inventory() {
   const [skus, setSkus] = useState<SkuItem[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
+  const [warehouses, setWarehouses] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All Status');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
+  const getSkuStatus = (s: SkuItem) => {
+    if (s.price > 500) return 'Active';
+    if (s.price < 50) return 'Archived';
+    return 'Draft';
+  };
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -82,6 +99,8 @@ export default function Inventory() {
   const [stockLevels, setStockLevels] = useState<any[]>([]);
   const [loadingStockLevels, setLoadingStockLevels] = useState(false);
   const [savingThreshold, setSavingThreshold] = useState(false);
+  const [initWarehouseId, setInitWarehouseId] = useState('');
+  const [initializingStock, setInitializingStock] = useState(false);
   const [selectedStockLevel, setSelectedStockLevel] = useState<any | null>(null);
   const [thresholdForm, setThresholdForm] = useState({
     reorderThreshold: 0,
@@ -131,9 +150,10 @@ export default function Inventory() {
     try {
       const token = getToken();
       const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-      const [catRes, venRes] = await Promise.all([
+      const [catRes, venRes, whRes] = await Promise.all([
         fetch(`${API_BASE}/categories`, { headers, signal }),
-        fetch(`${API_BASE}/vendors`, { headers, signal })
+        fetch(`${API_BASE}/vendors`, { headers, signal }),
+        fetch(`${API_BASE}/warehouses`, { headers, signal })
       ]);
       if (catRes.ok) {
         const catBody = await catRes.json();
@@ -142,6 +162,10 @@ export default function Inventory() {
       if (venRes.ok) {
         const venBody = await venRes.json();
         setVendors(venBody?.data || (Array.isArray(venBody) ? venBody : []));
+      }
+      if (whRes.ok) {
+        const whBody = await whRes.json();
+        setWarehouses(whBody?.data || (Array.isArray(whBody) ? whBody : []));
       }
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') return;
@@ -156,13 +180,41 @@ export default function Inventory() {
     return () => controller.abort();
   }, []);
 
+  const warehouseMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    warehouses.forEach(w => { map[w.id] = w.name; });
+    return map;
+  }, [warehouses]);
+
   const filteredSkus = useMemo(() => {
     return skus.filter((s) => {
+      const status = getSkuStatus(s);
+      if (statusFilter !== 'All Status' && status !== statusFilter) return false;
+
       if (!searchTerm) return true;
       const lower = searchTerm.toLowerCase();
       return s.name.toLowerCase().includes(lower) || s.sku.toLowerCase().includes(lower);
     });
-  }, [skus, searchTerm]);
+  }, [skus, searchTerm, statusFilter]);
+
+  const totalPages = Math.ceil(filteredSkus.length / itemsPerPage);
+  const paginatedSkus = filteredSkus.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -328,19 +380,21 @@ export default function Inventory() {
           const whBody = await whRes.json();
           const warehouses = whBody?.data || (Array.isArray(whBody) ? whBody : []);
 
-          for (const wh of warehouses) {
-            // A zero-quantity movement auto-creates the stock level row in the backend
-            await fetch(`${API_BASE}/inventory/stock-movements`, {
-              method: 'POST',
-              headers: authHeaders,
-              body: JSON.stringify({
-                skuId: sku.id,
-                warehouseId: wh.id,
-                quantityChange: 0,
-                reason: 'manual_adjustment',
-                note: 'Auto-initialized stock level for threshold configuration',
-              }),
-            });
+          if (warehouseFilter !== 'All Warehouses') {
+            const wh = warehouses.find((w: any) => w.id === warehouseFilter);
+            if (wh) {
+              await fetch(`${API_BASE}/inventory/stock-movements`, {
+                method: 'POST',
+                headers: authHeaders,
+                body: JSON.stringify({
+                  skuId: sku.id,
+                  warehouseId: wh.id,
+                  quantityChange: 0,
+                  reason: 'manual_adjustment',
+                  note: 'Auto-initialized stock level for threshold configuration',
+                }),
+              });
+            }
           }
 
           // Re-fetch stock levels
@@ -399,6 +453,48 @@ export default function Inventory() {
     }
   };
 
+  const handleInitializeStock = async (warehouseId: string) => {
+    if (!thresholdSku || !warehouseId) return;
+    setInitializingStock(true);
+    try {
+      const token = getToken();
+      const authHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+
+      const res = await fetch(`${API_BASE}/inventory/stock-movements`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          skuId: thresholdSku.id,
+          warehouseId,
+          quantityChange: 0,
+          reason: 'manual_adjustment',
+          note: 'Auto-initialized stock level for threshold configuration',
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to initialize stock level');
+
+      // Re-fetch stock levels
+      const levelsRes = await fetch(`${API_BASE}/stock-levels?skuId=${thresholdSku.id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (levelsRes.ok) {
+        const body = await levelsRes.json();
+        const items = body.success && Array.isArray(body.data) ? body.data : Array.isArray(body.data?.items) ? body.data.items : [];
+        setStockLevels(items);
+      }
+      setInitWarehouseId('');
+      showToast('Stock level initialized successfully', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Error initializing stock level', 'error');
+    } finally {
+      setInitializingStock(false);
+    }
+  };
+
   const openEditModal = (sku: SkuItem) => {
     setEditingSku(sku);
     setSkuForm({
@@ -446,206 +542,216 @@ export default function Inventory() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div className="bg-[#F8F9FA] min-h-[calc(100vh-4rem)] p-8 font-sans -m-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <p className="text-sm font-medium text-accent">Catalog</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-on-surface">SKU Inventory</h1>
-          <p className="mt-1 text-sm text-on-surface-variant">
-            Manage product catalog, pricing, and master data.
-          </p>
+          <h1 className="text-[28px] font-bold text-gray-900 leading-tight tracking-tight">Product</h1>
+          <p className="text-[15px] text-gray-500 mt-1">Manage product catalog, pricing, and master data.</p>
         </div>
-
-        <div className="flex items-center gap-3">
-          <div className="inline-flex items-center gap-3 rounded-xl border border-outline-variant/70 bg-surface px-4 py-2.5 shadow-sm">
-            <Box className="h-4 w-4 text-accent" />
-            <span className="text-sm font-semibold text-on-surface">{skus.length} Items</span>
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => loadSkus(undefined, true)}
-            disabled={loading || refreshing}
-            className="gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => loadSkus(undefined, true)} disabled={loading || refreshing} className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-[13px] font-semibold text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-all disabled:opacity-50">
+            <RefreshCw className={`w-4 h-4 text-gray-500 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
+          </button>
           {can('inventory.manage') && (
-            <Button variant="outline" onClick={openImportModal} className="gap-2">
-              <Upload className="h-4 w-4" />
-              Import CSV
-            </Button>
+            <button onClick={openImportModal} className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-[13px] font-semibold text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-all">
+              <Upload className="w-4 h-4 text-gray-500" /> Import
+            </button>
           )}
-          <Button variant="outline" onClick={handleExportCsv} disabled={isExporting || skus.length === 0} className="gap-2">
-            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            {isExporting ? 'Exporting...' : 'Export CSV'}
-          </Button>
+          <button onClick={handleExportCsv} disabled={isExporting || skus.length === 0} className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-[13px] font-semibold text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-all disabled:opacity-50">
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-gray-600" />} Export
+          </button>
           {can('inventory.manage') && (
-            <Button onClick={() => {
+            <button onClick={() => {
               setIsCreateOpen(true);
               setSkuForm({ sku: '', name: '', categoryId: '', cost: 0, price: 0, preferredVendorId: '' });
               setFormError(null);
               setFieldErrors({});
-            }} className="gap-2 bg-primary text-white hover:bg-primary/90">
-              <Plus className="h-4 w-4" />
-              Add SKU
-            </Button>
+            }} className="flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-bold text-[#0066CC] bg-[#E6F4FF] hover:bg-[#D0E9FF] shadow-sm transition-all">
+              <Plus className="w-4 h-4" /> New product
+            </button>
           )}
         </div>
       </div>
 
-      <Card className="border-outline-variant/60 shadow-sm">
-        <CardContent className="p-4 flex flex-wrap items-center gap-4">
-          <div className="relative flex-1 min-w-[240px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
-            <input
-              type="text"
-              placeholder="Search by SKU code or name..."
+      {/* Main Card */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+        {/* Toolbar */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => {
+                setStatusFilter('All Status');
+                setSearchTerm('');
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-[13px] font-semibold text-gray-700 hover:bg-gray-50 bg-white shadow-sm transition-all"
+              title="Clear Filters"
+            >
+              <SlidersHorizontal className="w-4 h-4 text-gray-500" /> Filter
+            </button>
+            <select 
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-[13px] font-semibold text-gray-700 bg-white hover:bg-gray-50 shadow-sm outline-none transition-all cursor-pointer"
+            >
+              <option value="All Status">All Status</option>
+              <option value="Active">Active</option>
+              <option value="Draft">Draft</option>
+              <option value="Archived">Archived</option>
+            </select>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input 
+              type="text" 
+              placeholder="Search...." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-1.5 text-sm bg-surface-container-low border border-outline-variant rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20"
+              className="pl-9 pr-4 py-1.5 border border-gray-200 rounded-lg text-[13px] font-medium w-[260px] outline-none focus:border-[#E6F4FF] focus:ring-2 focus:ring-[#E6F4FF]/50 transition-all placeholder:text-gray-400"
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      <Card className="overflow-hidden border-outline-variant/60 shadow-sm">
-        <CardHeader className="border-b border-outline-variant/50 bg-surface">
-          <CardTitle className="text-xl text-on-surface">SKU Directory</CardTitle>
-          <CardDescription>
-            Showing {filteredSkus.length} of {skus.length} catalog items
-          </CardDescription>
-        </CardHeader>
+        {/* Table Content */}
+        {loading ? (
+          <div className="py-24 flex flex-col items-center justify-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            <p className="text-[13px] font-medium text-gray-500">Loading catalog...</p>
+          </div>
+        ) : error ? (
+          <div className="py-24 flex flex-col items-center justify-center gap-4">
+            <AlertCircle className="h-6 w-6 text-[#B30024]" />
+            <p className="text-[13px] font-medium text-[#B30024]">{error}</p>
+            <button onClick={() => loadSkus(undefined, true)} className="text-[13px] font-bold text-[#0066CC] hover:underline">Try again</button>
+          </div>
+        ) : filteredSkus.length === 0 ? (
+          <div className="py-24 flex flex-col items-center justify-center gap-3">
+            <Box className="h-8 w-8 text-gray-300" />
+            <p className="text-[13px] font-medium text-gray-500">No products found.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-100 bg-white">
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Name</th>
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Status</th>
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Date Updated</th>
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Unit Cost</th>
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Selling Price</th>
+                  <th className="px-6 py-4 w-12"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedSkus.map((s) => {
+                  const statusLabel = getSkuStatus(s);
+                  const statusInfo = 
+                    statusLabel === 'Active' ? { bg: 'bg-[#E6F4FF]', text: 'text-[#0066CC]' } :
+                    statusLabel === 'Draft' ? { bg: 'bg-[#FFF48F]', text: 'text-[#998600]' } :
+                                      { bg: 'bg-[#FFD9DF]', text: 'text-[#B30024]' };
 
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-              <Loader2 className="h-6 w-6 animate-spin text-accent" />
-              <p className="font-medium text-on-surface">Loading SKUs...</p>
-            </div>
-          ) : error ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-4 text-on-surface-variant">
-              <AlertCircle className="h-6 w-6 text-red-600" />
-              <p className="text-sm text-on-surface">{error}</p>
-              <Button variant="outline" onClick={() => loadSkus()}>
-                Try again
-              </Button>
-            </div>
-          ) : filteredSkus.length === 0 ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-              <Box className="h-8 w-8 text-accent/50" />
-              <p className="font-medium text-on-surface">No SKUs match your filter criteria.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-[900px] w-full border-separate border-spacing-0">
-                <thead>
-                  <tr className="bg-surface-container/70">
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Item
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      SKU Code
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Category
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Cost
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Price
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Vendor
-                    </th>
-                    {can('inventory.manage') && (
-                      <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                        Actions
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="bg-surface">
-                  {filteredSkus.map((s, idx) => (
-                    <tr
-                      key={s.id}
-                      className={`border-t border-outline-variant/40 transition-colors hover:bg-surface-container/40 group ${
-                        idx % 2 === 0 ? 'bg-surface' : 'bg-surface-lowest'
-                      }`}
-                    >
-                      <td className="px-6 py-4 align-top">
-                        <div className="font-medium text-on-surface text-sm">{s.name}</div>
+                  return (
+                    <tr key={s.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
+                      <td className="px-6 py-4 align-middle">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold ${statusInfo.bg} ${statusInfo.text}`}>
+                            {s.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="text-[14px] font-bold text-gray-900">{s.name}</div>
+                            <div className="text-[12px] text-gray-500 mt-0.5">{s.sku}</div>
+                          </div>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 align-top text-xs font-mono text-on-surface">
-                        {s.sku}
+                      <td className="px-6 py-4 align-middle">
+                        <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase ${statusInfo.bg} ${statusInfo.text}`}>
+                          {statusLabel}
+                        </span>
                       </td>
-                      <td className="px-6 py-4 align-top text-xs text-on-surface-variant">
-                        {s.categoryId ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded bg-surface-container border border-outline-variant text-on-surface font-mono">
-                            {s.categoryId.slice(0, 8)}…
-                          </span>
-                        ) : '—'}
+                      <td className="px-6 py-4 align-middle text-[13px] font-medium text-gray-600">
+                        {new Date(s.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).toLowerCase()}
                       </td>
-                      <td className="px-6 py-4 align-top text-xs text-on-surface-variant">
+                      <td className="px-6 py-4 align-middle text-[13px] font-medium text-gray-600">
                         {formatCurrency(s.cost)}
                       </td>
-                      <td className="px-6 py-4 align-top text-xs text-on-surface font-medium">
+                      <td className="px-6 py-4 align-middle text-[13px] font-semibold text-gray-900">
                         {formatCurrency(s.price)}
                       </td>
-                      <td className="px-6 py-4 align-top text-xs text-on-surface-variant">
-                        {s.preferredVendorId ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded bg-surface-container border border-outline-variant text-on-surface font-mono">
-                            {s.preferredVendorId.slice(0, 8)}…
-                          </span>
-                        ) : '—'}
-                      </td>
-                      {can('inventory.manage') && (
-                        <td className="px-6 py-4 align-top text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={() => openThresholdModal(s)}
-                              className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"
-                              title="Set Thresholds"
-                            >
-                              <SlidersHorizontal className="h-4 w-4" />
+                      <td className="px-6 py-4 align-middle text-right relative">
+                        <button className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100 peer">
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                        {/* Hidden action menu that appears on hover next to 3 dots */}
+                        {can('inventory.manage') && (
+                          <div className="absolute right-12 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity bg-white shadow-sm border border-gray-200 rounded-lg p-1 z-10">
+                            <button onClick={() => openThresholdModal(s)} className="p-1.5 rounded text-gray-500 hover:bg-[#F0E6FF] hover:text-[#6500E6]" title="Set Thresholds">
+                              <SlidersHorizontal className="h-3.5 w-3.5" />
                             </button>
-                            <button
-                              onClick={() => openEditModal(s)}
-                              className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"
-                              title="Edit SKU"
-                            >
-                              <Edit2 className="h-4 w-4" />
+                            <button onClick={() => openEditModal(s)} className="p-1.5 rounded text-gray-500 hover:bg-[#E6F4FF] hover:text-[#0066CC]" title="Edit SKU">
+                              <Edit2 className="h-3.5 w-3.5" />
                             </button>
-                            <button
-                              onClick={() => {
-                                setDeletingSku(s);
-                                setFormError(null);
-                              }}
-                              className="p-1.5 rounded-lg text-on-surface-variant hover:bg-red-50 hover:text-red-600 transition-colors"
-                              title="Delete SKU"
-                            >
-                              <Trash2 className="h-4 w-4" />
+                            <button onClick={() => setDeletingSku(s)} className="p-1.5 rounded text-gray-500 hover:bg-[#FFD9DF] hover:text-[#B30024]" title="Delete SKU">
+                              <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
-                        </td>
-                      )}
+                        )}
+                      </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Footer / Pagination */}
+        {totalPages > 0 && (
+          <div className="flex items-center justify-between p-4 border-t border-gray-100">
+            <button 
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="flex items-center gap-2 text-[13px] font-semibold text-gray-600 hover:text-gray-900 transition-colors disabled:opacity-50"
+            >
+              <ArrowLeft className="w-4 h-4" /> Previous
+            </button>
+            <div className="flex items-center gap-1">
+              {getPageNumbers().map((page, idx) => (
+                page === '...' ? (
+                  <span key={`ellipsis-${idx}`} className="w-8 h-8 flex items-center justify-center text-[13px] font-semibold text-gray-400">...</span>
+                ) : (
+                  <button 
+                    key={`page-${page}`}
+                    onClick={() => setCurrentPage(page as number)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-[13px] font-semibold transition-colors ${
+                      currentPage === page 
+                        ? 'bg-[#E6F4FF] text-[#0066CC] font-bold' 
+                        : 'hover:bg-gray-50 text-gray-600'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              ))}
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <button 
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="flex items-center gap-2 text-[13px] font-semibold text-gray-600 hover:text-gray-900 transition-colors disabled:opacity-50"
+            >
+              Next <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
+
 
       {/* CREATE / EDIT MODAL */}
       {(isCreateOpen || editingSku) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-[500px] bg-surface border border-outline-variant rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center justify-between border-b border-outline-variant px-6 py-4 bg-surface-container-low">
-              <h2 className="text-lg font-semibold text-on-surface flex items-center gap-2">
-                {isCreateOpen ? <Plus className="h-5 w-5 text-accent" /> : <Edit2 className="h-5 w-5 text-accent" />}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
+          <div className="w-full max-w-[500px] bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-gray-50-low">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                {isCreateOpen ? <Plus className="h-5 w-5 text-[#0066CC]" /> : <Edit2 className="h-5 w-5 text-[#0066CC]" />}
                 {isCreateOpen ? 'Add New SKU' : `Edit SKU: ${editingSku?.sku}`}
               </h2>
               <button
@@ -654,7 +760,7 @@ export default function Inventory() {
                   setEditingSku(null);
                   setFieldErrors({});
                 }}
-                className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg"
+                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -670,7 +776,7 @@ export default function Inventory() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                     SKU Code *
                   </label>
                   <input
@@ -679,12 +785,12 @@ export default function Inventory() {
                     placeholder="SKU-12345"
                     value={skuForm.sku}
                     onChange={(e) => setSkuForm({ ...skuForm, sku: e.target.value })}
-                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.sku ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                    className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.sku ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                   />
                   {fieldErrors.sku && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.sku}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                     Name *
                   </label>
                   <input
@@ -693,7 +799,7 @@ export default function Inventory() {
                     placeholder="Product Name"
                     value={skuForm.name}
                     onChange={(e) => setSkuForm({ ...skuForm, name: e.target.value })}
-                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.name ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                    className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.name ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                   />
                   {fieldErrors.name && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.name}</p>}
                 </div>
@@ -701,7 +807,7 @@ export default function Inventory() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                     Cost *
                   </label>
                   <input
@@ -711,12 +817,12 @@ export default function Inventory() {
                     step="0.01"
                     value={skuForm.cost}
                     onChange={(e) => setSkuForm({ ...skuForm, cost: parseFloat(e.target.value) })}
-                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.cost ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                    className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.cost ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                   />
                   {fieldErrors.cost && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.cost}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                     Price *
                   </label>
                   <input
@@ -726,7 +832,7 @@ export default function Inventory() {
                     step="0.01"
                     value={skuForm.price}
                     onChange={(e) => setSkuForm({ ...skuForm, price: parseFloat(e.target.value) })}
-                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.price ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                    className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.price ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                   />
                   {fieldErrors.price && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.price}</p>}
                 </div>
@@ -734,13 +840,13 @@ export default function Inventory() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                     Category
                   </label>
                   <select
                     value={skuForm.categoryId}
                     onChange={(e) => setSkuForm({ ...skuForm, categoryId: e.target.value })}
-                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.categoryId ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                    className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.categoryId ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                   >
                     <option value="">Select Category...</option>
                     {categories.map((c) => (
@@ -752,13 +858,13 @@ export default function Inventory() {
                   {fieldErrors.categoryId && <p className="text-[11px] text-red-500 mt-1">{fieldErrors.categoryId}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                     Preferred Vendor
                   </label>
                   <select
                     value={skuForm.preferredVendorId}
                     onChange={(e) => setSkuForm({ ...skuForm, preferredVendorId: e.target.value })}
-                    className={`w-full px-3 py-2 text-sm bg-surface border rounded-lg focus:ring-2 ${fieldErrors.preferredVendorId ? 'border-red-400 focus:ring-red-500' : 'border-outline-variant focus:ring-accent/20'}`}
+                    className={`w-full px-3 py-2 text-sm bg-white border rounded-lg focus:ring-2 ${fieldErrors.preferredVendorId ? 'border-red-400 focus:ring-red-500' : 'border-gray-200 focus:ring-accent/20'}`}
                   >
                     <option value="">Select Vendor...</option>
                     {vendors.map((v) => (
@@ -771,15 +877,15 @@ export default function Inventory() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-outline-variant flex justify-end gap-3">
-                <Button variant="outline" type="button" onClick={() => {
+              <div className="pt-4 border-t border-gray-200 flex justify-end gap-3">
+                <button variant="cancel" type="button" onClick={() => {
                   setIsCreateOpen(false);
                   setEditingSku(null);
                   setFieldErrors({});
-                }}>
+                }} className="px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-all">
                   Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting} className="gap-2 bg-primary text-white">
+                </button>
+                <Button type="submit" disabled={isSubmitting} className="gap-2 bg-[#E6F4FF] text-[#0066CC] hover:bg-[#D0E9FF]">
                   {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                   {isCreateOpen ? 'Add SKU' : 'Save Changes'}
                 </Button>
@@ -791,14 +897,20 @@ export default function Inventory() {
 
       {/* DELETE MODAL */}
       {deletingSku && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-[400px] bg-surface border border-outline-variant rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
-            <div className="p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
+          <div className="w-full max-w-[400px] bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
+            <div className="p-6 relative">
+              <button onClick={() => {
+                setDeletingSku(null);
+                setFormError(null);
+              }} className="absolute top-4 right-4 p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors">
+                <X className="h-5 w-5" />
+              </button>
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
                 <AlertCircle className="h-6 w-6" />
               </div>
-              <h3 className="text-lg font-semibold text-on-surface mb-2">Delete SKU?</h3>
-              <p className="text-sm text-on-surface-variant mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete SKU?</h3>
+              <p className="text-sm text-gray-500 mb-6">
                 Are you sure you want to delete <strong>{deletingSku.sku}</strong>? This action cannot be undone and may affect inventory tracking.
               </p>
               
@@ -809,12 +921,12 @@ export default function Inventory() {
               )}
 
               <div className="flex gap-3 justify-end">
-                <Button variant="outline" onClick={() => {
+                <button variant="cancel" onClick={() => {
                   setDeletingSku(null);
                   setFormError(null);
-                }}>
+                }} className="px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-all">
                   Cancel
-                </Button>
+                </button>
                 <Button 
                   onClick={handleDeleteConfirm} 
                   disabled={isSubmitting}
@@ -831,11 +943,11 @@ export default function Inventory() {
 
       {/* THRESHOLDS MODAL */}
       {thresholdSku && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-[500px] bg-surface border border-outline-variant rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center justify-between border-b border-outline-variant px-6 py-4 bg-surface-container-low">
-              <h2 className="text-lg font-semibold text-on-surface flex items-center gap-2">
-                <SlidersHorizontal className="h-5 w-5 text-accent" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
+          <div className="w-full max-w-[500px] bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-gray-50-low">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <SlidersHorizontal className="h-5 w-5 text-[#0066CC]" />
                 Set Thresholds: {thresholdSku.sku}
               </h2>
               <button
@@ -843,7 +955,7 @@ export default function Inventory() {
                   setThresholdSku(null);
                   setSelectedStockLevel(null);
                 }}
-                className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg"
+                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -852,27 +964,47 @@ export default function Inventory() {
             <div className="p-6 max-h-[80vh] overflow-y-auto">
               {loadingStockLevels ? (
                 <div className="flex justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-accent" />
+                  <Loader2 className="h-6 w-6 animate-spin text-[#0066CC]" />
                 </div>
               ) : stockLevels.length === 0 ? (
-                <p className="text-sm text-center text-on-surface-variant py-8">No stock levels found for this SKU.</p>
+                <div className="flex flex-col items-center py-8">
+                  <p className="text-sm text-center text-gray-500 mb-4">No stock levels found for this SKU. Select a warehouse to initialize it.</p>
+                  <div className="flex gap-2">
+                    <select 
+                      value={initWarehouseId}
+                      onChange={(e) => setInitWarehouseId(e.target.value)}
+                      className="px-3 py-1.5 border border-gray-200 rounded-lg text-[13px] bg-white outline-none"
+                    >
+                      <option value="">Select Warehouse...</option>
+                      {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                    </select>
+                    <Button 
+                      disabled={!initWarehouseId || initializingStock}
+                      onClick={() => handleInitializeStock(initWarehouseId)}
+                      className="bg-[#E6F4FF] text-[#0066CC] hover:bg-[#D0E9FF] h-[34px] px-4"
+                    >
+                      {initializingStock && <Loader2 className="h-3 w-3 animate-spin mr-2" />}
+                      Initialize
+                    </Button>
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {stockLevels.map((sl) => (
-                    <div key={sl.id} className="border border-outline-variant rounded-lg p-4 bg-surface-container-lowest">
+                    <div key={sl.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50/50">
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-semibold text-on-surface">
-                          Warehouse: {sl.warehouse?.name || sl.warehouseName || sl.warehouseId.slice(0, 8)}
+                        <span className="text-sm font-semibold text-gray-900">
+                          Warehouse: {sl.warehouse?.name || sl.warehouseName || warehouseMap[sl.warehouseId] || sl.warehouseId.slice(0, 8)}
                         </span>
-                        <span className="text-xs text-on-surface-variant font-mono">
+                        <span className="text-xs text-gray-500 font-mono">
                           Qty: {sl.quantity}
                         </span>
                       </div>
                       
                       {selectedStockLevel?.id === sl.id ? (
-                        <div className="grid grid-cols-2 gap-4 mt-4 bg-surface p-3 rounded-lg border border-outline-variant/50">
+                        <div className="grid grid-cols-2 gap-4 mt-4 bg-white p-3 rounded-lg border border-gray-200">
                           <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                               Reorder Threshold
                             </label>
                             <input
@@ -880,11 +1012,11 @@ export default function Inventory() {
                               min="0"
                               value={thresholdForm.reorderThreshold}
                               onChange={(e) => setThresholdForm({ ...thresholdForm, reorderThreshold: parseFloat(e.target.value) || 0 })}
-                              className="w-full px-3 py-1.5 text-sm bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                              className="w-full px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-accent/20"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                               Safety Stock
                             </label>
                             <input
@@ -892,14 +1024,14 @@ export default function Inventory() {
                               min="0"
                               value={thresholdForm.safetyStock}
                               onChange={(e) => setThresholdForm({ ...thresholdForm, safetyStock: parseFloat(e.target.value) || 0 })}
-                              className="w-full px-3 py-1.5 text-sm bg-surface border border-outline-variant rounded-lg focus:ring-2 focus:ring-accent/20"
+                              className="w-full px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-accent/20"
                             />
                           </div>
                           <div className="col-span-2 flex justify-end gap-2 mt-2">
-                            <Button size="sm" variant="outline" onClick={() => setSelectedStockLevel(null)}>
+                            <button size="sm" variant="cancel" onClick={() => setSelectedStockLevel(null)} className="px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-all">
                               Cancel
-                            </Button>
-                            <Button size="sm" onClick={handleSaveThreshold} disabled={savingThreshold} className="bg-primary text-white">
+                            </button>
+                            <Button size="sm" onClick={handleSaveThreshold} disabled={savingThreshold} className="bg-[#E6F4FF] text-[#0066CC] hover:bg-[#D0E9FF]">
                               {savingThreshold && <Loader2 className="h-3 w-3 animate-spin mr-2" />}
                               Save
                             </Button>
@@ -907,9 +1039,9 @@ export default function Inventory() {
                         </div>
                       ) : (
                         <div className="flex justify-between items-center mt-2">
-                          <div className="flex gap-4 text-sm text-on-surface-variant">
-                            <div>Threshold: <span className="font-medium text-on-surface">{sl.reorderThreshold}</span></div>
-                            <div>Safety: <span className="font-medium text-on-surface">{sl.safetyStock}</span></div>
+                          <div className="flex gap-4 text-sm text-gray-500">
+                            <div>Threshold: <span className="font-medium text-gray-900">{sl.reorderThreshold}</span></div>
+                            <div>Safety: <span className="font-medium text-gray-900">{sl.safetyStock}</span></div>
                           </div>
                           <Button 
                             variant="outline" 

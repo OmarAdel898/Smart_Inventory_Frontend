@@ -65,6 +65,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
   if (!res.ok) {
     if (res.status === 401) handleUnauthorized();
+    if (res.status === 402) {
+      if (window.location.pathname !== '/profile') {
+        window.location.assign('/profile?tab=billing');
+      }
+    }
     const rawMessage = json?.meta?.message || json?.message || json?.error || `Request failed (${res.status})`;
     const message = Array.isArray(rawMessage) ? rawMessage.join(', ') : rawMessage;
     throw new ApiError(message, res.status, json?.meta || json);

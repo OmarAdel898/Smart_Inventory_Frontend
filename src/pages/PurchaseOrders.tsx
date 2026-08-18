@@ -4,6 +4,7 @@ import {
   AlertCircle,
   Clock,
   Eye,
+
   FileText,
   Filter,
   Loader2,
@@ -13,9 +14,13 @@ import {
   Search,
   Warehouse as WarehouseIcon,
   X,
+  SlidersHorizontal,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { usePermissions } from '@/hooks/useCan';
 
 export type LineItem = {
   id: string;
@@ -75,15 +80,21 @@ function formatCurrency(amount: number): string {
 
 export default function PurchaseOrders() {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+  const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
+  const { can } = usePermissions();
 
   // Filters state
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [warehouseIdFilter, setWarehouseIdFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const loadOrders = async (signal?: AbortSignal, isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -129,6 +140,36 @@ export default function PurchaseOrders() {
     return () => controller.abort();
   }, [statusFilter, warehouseIdFilter]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    const loadRelations = async () => {
+      try {
+        const token = getToken();
+        const res = await fetch(`${API_BASE}/vendors`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          signal: controller.signal,
+        });
+        if (res.ok) {
+          const body = await res.json();
+          setVendors(body?.data || (Array.isArray(body) ? body : []));
+        }
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        console.error('Failed to load vendors', e);
+      }
+    };
+    void loadRelations();
+    return () => controller.abort();
+  }, []);
+
+  const vendorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    vendors.forEach((v) => {
+      map[v.id] = v.name;
+    });
+    return map;
+  }, [vendors]);
+
   // Client-side search filtering
   const filteredOrders = useMemo(() => {
     if (!searchTerm.trim()) return orders;
@@ -137,9 +178,13 @@ export default function PurchaseOrders() {
       (o) =>
         o.id.toLowerCase().includes(lower) ||
         o.vendorId.toLowerCase().includes(lower) ||
+        (vendorMap[o.vendorId] && vendorMap[o.vendorId].toLowerCase().includes(lower)) ||
         o.status.toLowerCase().includes(lower)
     );
   }, [orders, searchTerm]);
+
+  const totalPages = Math.ceil(filteredOrders.length / pageSize);
+  const paginatedOrders = filteredOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   // Calculated KPI statistics
   const stats = useMemo(() => {
@@ -153,268 +198,270 @@ export default function PurchaseOrders() {
   }, [orders]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div className="space-y-6 max-w-[1400px] mx-auto pb-10">
+      {/* Header Area */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between mb-2">
         <div>
-          <p className="text-sm font-medium text-accent">Procurement Lifecycle</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-on-surface">Purchase Orders</h1>
-          <p className="mt-1 text-sm text-on-surface-variant">
-            Manage and monitor supplier orders, approval workflows, and receiving status.
-          </p>
+           <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Purchase Orders</h2>
+           <p className="text-sm text-gray-500 mt-1">Manage and track vendor purchase orders</p>
         </div>
 
         <div className="flex items-center gap-3">
-          <Button onClick={() => navigate('/purchase-orders/new')} className="gap-2 bg-primary text-white hover:bg-primary/90">
-            <Plus className="h-4 w-4" />
-            Create Purchase Order
-          </Button>
-          <Button
-            variant="outline"
+          <button 
             onClick={() => loadOrders(undefined, true)}
             disabled={loading || refreshing}
-            className="gap-2"
+            className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-[13px] font-semibold text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-all disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
-          </Button>
+          </button>
+          {can('purchaseOrders.manage') && (
+            <button 
+              onClick={() => navigate('/purchase-orders/new')}
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-bold text-[#0066CC] bg-[#E6F4FF] hover:bg-[#D0E9FF] shadow-sm transition-all"
+            >
+              <Plus className="h-4 w-4" />
+              Create Purchase Order
+            </button>
+          )}
         </div>
       </div>
 
       {/* KPI Bento Cards Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-surface-container-lowest border border-outline-variant/70 p-4 rounded-xl relative overflow-hidden shadow-sm">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-accent" />
-          <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
-            Total Orders
-          </p>
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-bold text-on-surface">{stats.total}</span>
-            <FileText className="h-5 w-5 text-accent/60" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-[#FFF48F] rounded-[2rem] p-6 relative overflow-hidden flex flex-col justify-between shadow-sm min-h-[140px]">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-black/5 rounded-full">
+                <FileText className="h-4 w-4 text-black" />
+              </div>
+              <span className="font-bold text-gray-900 text-sm">Total Orders</span>
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="text-3xl font-bold text-gray-900">{stats.total}</span>
           </div>
         </div>
 
-        <div className="bg-surface-container-lowest border border-outline-variant/70 p-4 rounded-xl relative overflow-hidden shadow-sm">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-amber-500" />
-          <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
-            Pending Approval
-          </p>
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-bold text-amber-700">{stats.pending}</span>
-            <Clock className="h-5 w-5 text-amber-500/60" />
+        <div className="bg-[#FFD9DF] rounded-[2rem] p-6 relative overflow-hidden flex flex-col justify-between shadow-sm min-h-[140px]">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-black/5 rounded-full">
+                <Clock className="h-4 w-4 text-black" />
+              </div>
+              <span className="font-bold text-gray-900 text-sm">Pending Approval</span>
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="text-3xl font-bold text-gray-900">{stats.pending}</span>
           </div>
         </div>
 
-        <div className="bg-surface-container-lowest border border-outline-variant/70 p-4 rounded-xl relative overflow-hidden shadow-sm">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-blue-500" />
-          <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
-            Active / Approved
-          </p>
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-bold text-blue-700">{stats.approved}</span>
-            <Package className="h-5 w-5 text-blue-500/60" />
+        <div className="bg-[#F0E6FF] rounded-[2rem] p-6 relative overflow-hidden flex flex-col justify-between shadow-sm min-h-[140px]">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-black/5 rounded-full">
+                <Package className="h-4 w-4 text-black" />
+              </div>
+              <span className="font-bold text-gray-900 text-sm">Active / Approved</span>
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="text-3xl font-bold text-gray-900">{stats.approved}</span>
           </div>
         </div>
 
-        <div className="bg-surface-container-lowest border border-outline-variant/70 p-4 rounded-xl relative overflow-hidden shadow-sm">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-emerald-500" />
-          <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
-            Total Order Value
-          </p>
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-bold text-emerald-700">{formatCurrency(stats.totalValue)}</span>
+        <div className="bg-[#E6F4FF] rounded-[2rem] p-6 relative overflow-hidden flex flex-col justify-between shadow-sm min-h-[140px]">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-black/5 rounded-full">
+                <FileText className="h-4 w-4 text-black" />
+              </div>
+              <span className="font-bold text-gray-900 text-sm">Total Order Value</span>
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalValue)}</span>
           </div>
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <Card className="border-outline-variant/60 shadow-sm">
-        <CardContent className="p-4 flex flex-wrap items-center gap-4">
-          {/* Status Tab Pills */}
-          <div className="flex flex-wrap items-center bg-surface-container border border-outline-variant/70 rounded-lg p-1 gap-1">
-            {[
-              { id: 'all', label: 'All' },
-              { id: 'draft', label: 'Draft' },
-              { id: 'pending_approval', label: 'Pending' },
-              { id: 'approved', label: 'Approved' },
-              { id: 'sent', label: 'Sent' },
-              { id: 'received', label: 'Received' },
-              { id: 'rejected', label: 'Rejected' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setStatusFilter(tab.id)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                  statusFilter === tab.id
-                    ? 'bg-surface text-primary shadow-sm'
-                    : 'text-on-surface-variant hover:text-on-surface'
-                }`}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+        {/* Toolbar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-b border-gray-100 gap-4">
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            <div className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-[13px] bg-white shadow-sm">
+              <span className="text-gray-400 font-semibold">Status:</span>
+              <select 
+                className="bg-transparent border-none p-0 focus:ring-0 text-gray-900 font-medium cursor-pointer outline-none"
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
               >
-                {tab.label}
-              </button>
-            ))}
+                <option value="all">All</option>
+                <option value="draft">Draft</option>
+                <option value="pending_approval">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="sent">Sent</option>
+                <option value="received">Received</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+            
+            <div className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-[13px] bg-white shadow-sm">
+              <WarehouseIcon className="h-4 w-4 text-gray-400" />
+              <input 
+                className="bg-transparent border-none p-0 focus:ring-0 w-[140px] text-gray-900 placeholder:text-gray-400 font-medium outline-none" 
+                placeholder="Warehouse..."
+                type="text" 
+                value={warehouseIdFilter}
+                onChange={(e) => {
+                  setWarehouseIdFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+              {warehouseIdFilter && (
+                <button onClick={() => { setWarehouseIdFilter(''); setCurrentPage(1); }} className="text-gray-400 hover:text-gray-900">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
           </div>
-
-          {/* Search Input */}
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
-            <input
-              type="text"
-              placeholder="Search PO ID or Vendor ID..."
+          <div className="relative w-full sm:w-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input 
+              type="text" 
+              placeholder="Search ID or Vendor..." 
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-1.5 text-sm bg-surface-container-low border border-outline-variant rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20"
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full sm:w-[260px] pl-9 pr-4 py-1.5 border border-gray-200 rounded-lg text-[13px] font-medium outline-none focus:border-[#E6F4FF] focus:ring-2 focus:ring-[#E6F4FF]/50 transition-all placeholder:text-gray-400"
             />
           </div>
+        </div>
 
-          {/* Warehouse ID Filter Input */}
-          <div className="relative w-60">
-            <WarehouseIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
-            <input
-              type="text"
-              placeholder="Filter by Warehouse ID..."
-              value={warehouseIdFilter}
-              onChange={(e) => setWarehouseIdFilter(e.target.value)}
-              className="w-full pl-9 pr-8 py-1.5 text-sm font-mono bg-surface border border-outline-variant rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20"
-            />
-            {warehouseIdFilter && (
-              <button
-                onClick={() => setWarehouseIdFilter('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Directory Table */}
-      <Card className="overflow-hidden border-outline-variant/60 shadow-sm">
-        <CardHeader className="border-b border-outline-variant/50 bg-surface">
-          <CardTitle className="text-xl text-on-surface">Order Directory</CardTitle>
-          <CardDescription>
-            Showing {filteredOrders.length} of {orders.length} purchase orders
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="p-0">
+        <div className="overflow-x-auto">
           {loading ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-              <Loader2 className="h-6 w-6 animate-spin text-accent" />
-              <p className="font-medium text-on-surface">Loading purchase orders...</p>
+            <div className="py-24 flex flex-col items-center justify-center gap-3">
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              <p className="text-[13px] font-medium text-gray-500">Loading purchase orders...</p>
             </div>
           ) : error ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-4 text-on-surface-variant">
-              <AlertCircle className="h-6 w-6 text-red-600" />
-              <p className="text-sm text-on-surface">{error}</p>
-              <Button variant="outline" onClick={() => loadOrders(undefined, true)}>
-                Try again
-              </Button>
+            <div className="py-24 flex flex-col items-center justify-center gap-4">
+              <AlertCircle className="h-6 w-6 text-[#B30024]" />
+              <p className="text-[13px] font-medium text-[#B30024]">{error}</p>
+              <button onClick={() => loadOrders(undefined, true)} className="text-[13px] font-bold text-[#0066CC] hover:underline">Try again</button>
             </div>
           ) : filteredOrders.length === 0 ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-              <FileText className="h-8 w-8 text-accent/50" />
-              <p className="font-medium text-on-surface">No purchase orders found.</p>
-              <p className="text-xs">Try adjusting your status or warehouse filter.</p>
+            <div className="py-24 flex flex-col items-center justify-center gap-3">
+              <FileText className="h-8 w-8 text-gray-300" />
+              <p className="text-[13px] font-medium text-gray-500">No purchase orders found.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-[900px] w-full border-separate border-spacing-0">
-                <thead>
-                  <tr className="bg-surface-container/70">
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      PO ID
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Vendor ID
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Status
-                    </th>
-                    <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Line Items
-                    </th>
-                    <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Total Amount
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Created Date
-                    </th>
-                    <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-surface">
-                  {filteredOrders.map((order, index) => {
-                    const style = getStatusStyle(order.status);
-                    const totalVal = order.lineItems.reduce((sum, li) => sum + Number(li.total || 0), 0);
-                    return (
-                      <tr
-                        key={order.id}
-                        onClick={() => navigate(`/purchase-orders/${order.id}`)}
-                        className={`border-t border-outline-variant/40 transition-colors hover:bg-surface-container/40 cursor-pointer group ${
-                          index % 2 === 0 ? 'bg-surface' : 'bg-surface-lowest'
-                        }`}
-                      >
-                        <td className="px-6 py-4 align-top">
-                          <div className="font-mono text-sm font-semibold text-accent group-hover:underline">
-                            {order.id.slice(0, 8)}
-                          </div>
-                          <div className="text-[11px] text-on-surface-variant font-mono">
-                            {order.id.slice(0, 18)}…
-                          </div>
-                        </td>
-
-                        <td className="px-6 py-4 align-top text-xs font-mono text-on-surface">
-                          {order.vendorId.slice(0, 12)}…
-                        </td>
-
-                        <td className="px-6 py-4 align-top">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${style.bg} ${style.text}`}
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-100 bg-white">
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">PO ID</th>
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Vendor ID</th>
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap">Status</th>
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap text-right">Items</th>
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap text-right">Total Amount</th>
+                  <th className="px-6 py-4 text-[13px] font-semibold text-gray-500 whitespace-nowrap hidden md:table-cell">Created Date</th>
+                  <th className="px-6 py-4 w-12"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedOrders.map((order) => {
+                  const style = getStatusStyle(order.status);
+                  const totalVal = order.lineItems.reduce((sum, li) => sum + Number(li.total || 0), 0);
+                  return (
+                    <tr 
+                      key={order.id}
+                      onClick={() => navigate(`/purchase-orders/${order.id}`)}
+                      className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer group"
+                    >
+                      <td className="px-6 py-4 align-middle">
+                        <div className="flex flex-col">
+                          <span className="text-[14px] font-bold text-[#0066CC] group-hover:underline leading-tight truncate max-w-[120px]">{order.id.slice(0, 8)}</span>
+                          <span className="text-[11px] font-medium text-gray-500 font-mono mt-0.5">{order.id.slice(0, 18)}…</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 align-middle text-[13px] font-medium text-gray-600">
+                        {vendorMap[order.vendorId] || order.vendorId.slice(0, 12) + '…'}
+                      </td>
+                      <td className="px-6 py-4 align-middle">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${style.bg} ${style.text}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                          {style.label}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 align-middle text-right text-[13px] font-bold text-gray-900">
+                        {order.lineItems.length}
+                      </td>
+                      <td className="px-6 py-4 align-middle text-right text-[13px] font-bold text-gray-900 font-mono">
+                        {formatCurrency(totalVal)}
+                      </td>
+                      <td className="px-6 py-4 align-middle text-[13px] font-medium text-gray-500 whitespace-nowrap hidden md:table-cell">
+                        {formatDate(order.createdAt)}
+                      </td>
+                      <td className="px-6 py-4 align-middle text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); navigate(`/purchase-orders/${order.id}`); }} 
+                            className="p-1.5 rounded-full font-bold text-gray-400 hover:bg-[#E6F4FF] hover:text-[#0066CC] transition-colors" 
+                            title="View"
                           >
-                            <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-                            {style.label}
-                          </span>
-                        </td>
-
-                        <td className="px-6 py-4 align-top text-sm text-right font-medium text-on-surface">
-                          {order.lineItems.length} {order.lineItems.length === 1 ? 'item' : 'items'}
-                        </td>
-
-                        <td className="px-6 py-4 align-top text-sm text-right font-bold text-on-surface font-mono">
-                          {formatCurrency(totalVal)}
-                        </td>
-
-                        <td className="px-6 py-4 align-top text-xs text-on-surface-variant">
-                          {formatDate(order.createdAt)}
-                        </td>
-
-                        <td className="px-6 py-4 align-top text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/purchase-orders/${order.id}`);
-                            }}
-                            className="h-8 gap-1 text-xs hover:bg-surface-container-high"
-                          >
-                            <Eye className="h-3.5 w-3.5 text-accent" />
-                            View
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+        
+        {/* Pagination Footer */}
+        {!loading && !error && filteredOrders.length > 0 && (
+          <div className="border-t border-gray-100 px-6 py-4 flex items-center justify-between bg-gray-50/30 rounded-b-xl">
+            <button 
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="flex items-center gap-1.5 text-[13px] font-semibold text-gray-500 hover:text-gray-900 disabled:opacity-40 disabled:hover:text-gray-500 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" /> Previous
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-bold transition-all ${
+                    currentPage === i + 1 
+                      ? 'bg-[#E6F4FF] text-[#0066CC]' 
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+            <button 
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="flex items-center gap-1.5 text-[13px] font-semibold text-gray-500 hover:text-gray-900 disabled:opacity-40 disabled:hover:text-gray-500 transition-colors"
+            >
+              Next <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

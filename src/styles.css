@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 @theme {
   --color-navy: #1F2A44;
@@ -148,7 +149,7 @@ body {
   position: absolute;
   inset: -4px;
   border-radius: 50%;
-  border: 2px solid #2E6F6E;
+  border: 2px solid #0066CC;
   animation: fabRing 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
@@ -163,7 +164,7 @@ body {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #76777e;
+  background: #3b82f6;
   animation: typingBounce 1.4s infinite ease-in-out both;
 }
 .typing-dot:nth-child(1) { animation-delay: 0s; }
@@ -184,4 +185,23 @@ body {
 .chat-messages-scroll::-webkit-scrollbar-thumb {
   background: #c6c6ce;
   border-radius: 10px;
+}
+
+/* ── Loading Skeleton Shimmer ── */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #e7e8ea;
+  border-radius: 0.5rem;
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  animation: skeletonSweep 1.5s ease-in-out infinite;
+}
+@keyframes skeletonSweep {
+  100% { transform: translateX(100%); }
 }

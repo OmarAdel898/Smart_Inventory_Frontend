@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { api, ApiError } from '@/api/client';
 import { forgotPasswordSchema } from '@/features/auth/validations';
@@ -10,7 +11,7 @@ function FormField({ id, type, placeholder, label, value, onChange, error, requi
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium text-on-surface">{label}</label>
+      <label htmlFor={id} className="text-sm font-medium text-gray-900">{label}</label>
       <input
         id={id}
         type={type}
@@ -18,10 +19,10 @@ function FormField({ id, type, placeholder, label, value, onChange, error, requi
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
-        className={`w-full h-10 px-3 bg-surface-container rounded-lg border text-sm text-on-surface outline-none transition-all placeholder:text-on-surface-variant/50 focus:ring-1 ${
+        className={`w-full h-10 px-3 bg-gray-50 rounded-lg border text-sm text-gray-900 outline-none transition-all placeholder:text-gray-500/50 focus:ring-1 ${
           error
             ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
-            : 'border-outline-variant focus:border-accent focus:ring-accent'
+            : 'border-gray-200 focus:border-accent focus:ring-accent'
         }`}
       />
       {error && <p className="text-xs text-red-500">{error}</p>}
@@ -64,35 +65,28 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="flex min-h-screen">
-      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-navy to-accent p-8 flex-col justify-between relative overflow-hidden">
-        <div className="absolute -top-20 -right-20 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 w-[500px] h-[500px] bg-secondary-fixed/10 rounded-full blur-3xl" />
-        <div className="relative z-10 flex flex-col justify-between h-full">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-lg flex items-center justify-center text-white border border-white/20">
-              <span className="material-symbols-outlined">inventory_2</span>
-            </div>
-            <span className="text-2xl font-semibold text-white tracking-tight">StockSavvy</span>
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      className="flex min-h-screen items-center justify-center bg-gray-50 p-4"
+    >
+      <div className="w-full max-w-[440px] bg-white rounded-3xl shadow-sm border border-gray-200 p-8 sm:p-10">
+        <div className="flex items-center gap-3 mb-8 justify-center">
+          <div className="w-10 h-10 bg-[#0066CC] text-white rounded-xl flex items-center justify-center shadow-sm">
+            <span className="material-symbols-outlined">inventory_2</span>
           </div>
-          <div className="max-w-sm">
-            <h1 className="text-[32px] font-semibold text-white leading-10 tracking-tight mb-4">Secure Your Account.</h1>
-            <p className="text-base text-white/80 leading-6">Regain access to your enterprise inventory management dashboard in just a few clicks.</p>
-          </div>
-          <div className="text-xs text-white/60 tracking-wide">&copy; 2026 StockSavvy Inc. All rights reserved.</div>
+          <span className="text-2xl font-semibold text-gray-900 tracking-tight">StockSavvy</span>
         </div>
-      </div>
 
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-8 bg-surface">
-        <div className="w-full max-w-md">
-          <button onClick={() => navigate('/login')} className="flex items-center gap-2 text-sm text-on-surface-variant hover:text-on-surface mb-8 transition-colors">
-            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-            Back to login
-          </button>
+        <button onClick={() => navigate('/login')} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-8 transition-colors">
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          Back to login
+        </button>
 
           <div className="mb-6">
-            <h2 className="text-2xl font-semibold text-on-surface mb-1">Forgot Password</h2>
-            <p className="text-sm text-on-surface-variant">Enter your email address and we'll send you a link to reset your password.</p>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-1">Forgot Password</h2>
+            <p className="text-sm text-gray-500">Enter your email address and we'll send you a link to reset your password.</p>
           </div>
 
           {error && (
@@ -123,7 +117,7 @@ export default function ForgotPassword() {
                 required
               />
 
-              <Button type="submit" className="w-full bg-navy hover:bg-navy/90 mt-2" disabled={loading}>
+              <Button type="submit" className="w-full cursor-pointer h-11 text-base mt-2" disabled={loading}>
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -136,7 +130,6 @@ export default function ForgotPassword() {
             </form>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
   );
 }

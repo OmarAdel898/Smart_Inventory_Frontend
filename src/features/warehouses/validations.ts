@@ -7,4 +7,5 @@ export const warehouseSchema = z.object({
     .max(255, 'Warehouse name must be at most 255 characters'),
   location: z.string().max(255).optional().or(z.literal('')),
   status: z.enum(['active', 'inactive']).optional(),
+  capacityUnits: z.coerce.number().int().min(0, 'Capacity must be 0 or more').optional(),
 });

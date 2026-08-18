@@ -5,7 +5,7 @@ export interface Approval {
   stepNumber: number;
   payload: Record<string, unknown>;
   reasoning: string | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'deferred';
   reviewedBy: string | null;
   reviewedAt: string | null;
   createdAt: string;
@@ -47,13 +47,14 @@ const AGENT_LABELS: Record<string, string> = {
 
 const STEP_LABELS: Record<string, Record<number, string>> = {
   reorder: { 1: 'Procurement Auth', 2: 'Auto-Fulfill Check', 3: 'Stock Level Override' },
-  negotiation: { 1: 'Vendor Counter-Offer', 2: 'Price Negotiation', 3: 'Terms Review' },
+  negotiation: { 1: 'Vendor Outreach', 2: 'Counter-Offer Review', 3: 'Final Sign-Off' },
 };
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Pending Review',
   approved: 'Approved',
   rejected: 'Rejected',
+  deferred: 'Deferred to Negotiation',
 };
 
 export function formatAgentType(type: string): string {

@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
+import { Bot, ChevronDown, Send, Sparkles, Trash2, X } from 'lucide-react';
 import { useAssistantStore } from '@/store/assistantStore';
 import type { Message, Source } from '@/store/assistantStore';
 
-const SOURCE_TYPE_COLORS: Record<string, string> = {
-  contract: 'bg-blue-100 text-blue-700',
-  catalog: 'bg-emerald-100 text-emerald-700',
-  negotiation_transcript: 'bg-amber-100 text-amber-700',
-  report: 'bg-purple-100 text-purple-700',
+const SOURCE_TYPE_BADGES: Record<string, string> = {
+  contract: 'bg-blue-100 text-blue-700 border border-blue-200',
+  catalog: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+  negotiation_transcript: 'bg-amber-100 text-amber-700 border border-amber-200',
+  report: 'bg-purple-100 text-purple-700 border border-purple-200',
 };
 
 const SUGGESTIONS = [
@@ -15,6 +16,17 @@ const SUGGESTIONS = [
   'What discount did we negotiate with our suppliers?',
 ];
 
+/* ── Bot Avatar ── */
+function BotAvatar({ className = 'w-8 h-8' }: { className?: string }) {
+  return (
+    <div
+      className={`${className} shrink-0 rounded-full bg-gradient-to-br from-blue-600 to-teal-400 text-white flex items-center justify-center shadow-sm shadow-[#0066CC]/25`}
+    >
+      <Bot className="w-4 h-4" strokeWidth={2.2} />
+    </div>
+  );
+}
+
 /* ── Collapsible Sources Component ── */
 function SourcesPanel({ sources }: { sources: Source[] }) {
   const [open, setOpen] = useState(false);
@@ -22,14 +34,14 @@ function SourcesPanel({ sources }: { sources: Source[] }) {
   if (!sources.length) return null;
 
   return (
-    <div className="mt-2">
+    <div className="mt-2.5">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 text-xs font-semibold text-on-surface-variant hover:text-secondary transition-colors"
+        className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#0066CC] transition-colors"
       >
-        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
-          {open ? 'expand_less' : 'expand_more'}
-        </span>
+        <ChevronDown
+          className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
         Sources ({sources.length})
       </button>
       {open && (
@@ -37,21 +49,21 @@ function SourcesPanel({ sources }: { sources: Source[] }) {
           {sources.map((src, idx) => (
             <div
               key={idx}
-              className="rounded-lg border border-outline-variant bg-surface-container-low p-3 text-xs"
+              className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-xs shadow-sm"
             >
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between mb-1.5 gap-2">
                 <span
                   className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                    SOURCE_TYPE_COLORS[src.sourceType] ?? 'bg-gray-100 text-gray-600'
+                    SOURCE_TYPE_BADGES[src.sourceType] ?? 'bg-slate-100 text-slate-600 border border-slate-200'
                   }`}
                 >
                   {src.sourceType.replace(/_/g, ' ')}
                 </span>
-                <span className="font-mono text-[10px] text-on-surface-variant">
+                <span className="font-mono text-[10px] text-slate-400">
                   {(src.score * 100).toFixed(1)}% match
                 </span>
               </div>
-              <p className="text-on-surface leading-relaxed line-clamp-3">{src.content}</p>
+              <p className="text-slate-600 leading-relaxed line-clamp-3">{src.content}</p>
             </div>
           ))}
         </div>
@@ -63,18 +75,14 @@ function SourcesPanel({ sources }: { sources: Source[] }) {
 /* ── Typing Indicator ── */
 function TypingIndicator() {
   return (
-    <div className="flex items-start gap-2 mb-4">
-      <div className="w-7 h-7 rounded-full bg-secondary/10 flex items-center justify-center flex-shrink-0">
-        <span className="material-symbols-outlined text-secondary" style={{ fontSize: 16 }}>
-          smart_toy
-        </span>
-      </div>
-      <div className="bg-surface-container rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%]">
+    <div className="flex items-start gap-2.5 mb-4">
+      <BotAvatar className="w-8 h-8 mt-0.5" />
+      <div className="bg-white border border-slate-100 shadow-sm rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%]">
         <div className="flex items-center gap-1.5">
           <span className="typing-dot" />
           <span className="typing-dot" />
           <span className="typing-dot" />
-          <span className="ml-2 text-xs text-on-surface-variant">Thinking…</span>
+          <span className="ml-2 text-xs font-medium text-slate-400">Thinking…</span>
         </div>
       </div>
     </div>
@@ -86,7 +94,7 @@ function MessageBubble({ message }: { message: Message }) {
   if (message.role === 'user') {
     return (
       <div className="flex justify-end mb-4">
-        <div className="bg-primary text-on-primary rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[85%]">
+        <div className="bg-[#0066CC] text-white rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[85%] shadow-sm shadow-[#0066CC]/25">
           <p className="text-sm leading-relaxed">{message.content}</p>
         </div>
       </div>
@@ -94,23 +102,19 @@ function MessageBubble({ message }: { message: Message }) {
   }
 
   return (
-    <div className="flex items-start gap-2 mb-4">
-      <div className="w-7 h-7 rounded-full bg-secondary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-        <span className="material-symbols-outlined text-secondary" style={{ fontSize: 16 }}>
-          smart_toy
-        </span>
-      </div>
+    <div className="flex items-start gap-2.5 mb-4">
+      <BotAvatar className="w-8 h-8 mt-0.5" />
       <div className="max-w-[85%]">
         <div
           className={`rounded-2xl rounded-tl-sm px-4 py-2.5 ${
             message.error
-              ? 'bg-error-container/30 border border-error/20'
-              : 'bg-surface-container'
+              ? 'bg-red-50 border border-red-200'
+              : 'bg-white border border-slate-100 shadow-sm'
           }`}
         >
           <p
             className={`text-sm leading-relaxed whitespace-pre-wrap ${
-              message.error ? 'text-error' : 'text-on-surface'
+              message.error ? 'text-red-600' : 'text-slate-700'
             }`}
           >
             {message.content}
@@ -136,22 +140,17 @@ function ChatList({ emptyHint }: { emptyHint: string }) {
   if (messages.length === 0 && !loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center py-8">
-        <div className="w-14 h-14 rounded-full bg-secondary/10 flex items-center justify-center mb-4">
-          <span
-            className="material-symbols-outlined text-secondary"
-            style={{ fontSize: 28, fontVariationSettings: "'FILL' 1" }}
-          >
-            smart_toy
-          </span>
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-teal-400 flex items-center justify-center mb-4 shadow-lg shadow-[#0066CC]/25">
+          <Sparkles className="w-6 h-6 text-white" />
         </div>
-        <h4 className="text-sm font-semibold text-primary mb-1">Ask me anything</h4>
-        <p className="text-xs text-on-surface-variant max-w-[300px] leading-relaxed">{emptyHint}</p>
+        <h4 className="text-sm font-bold text-slate-900 mb-1">Ask me anything</h4>
+        <p className="text-xs text-slate-500 max-w-[300px] leading-relaxed">{emptyHint}</p>
         <div className="mt-4 flex flex-wrap gap-2 justify-center">
           {SUGGESTIONS.map((s) => (
             <button
               key={s}
               onClick={() => setInput(s)}
-              className="px-3 py-1.5 text-[11px] rounded-full border border-outline-variant text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"
+              className="px-3 py-1.5 text-[11px] font-medium rounded-full border border-slate-200 bg-white text-slate-500 hover:border-[#0066CC] hover:text-[#0066CC] hover:bg-blue-50 transition-colors"
             >
               {s}
             </button>
@@ -196,17 +195,15 @@ function ChatInput({ inputRef }: { inputRef?: React.RefObject<HTMLInputElement> 
         onKeyDown={handleKeyDown}
         placeholder="Ask a question…"
         disabled={loading}
-        className="flex-1 h-11 px-4 rounded-full border border-outline-variant bg-surface-lowest text-sm text-on-surface placeholder:text-on-surface-variant/50 outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 transition-all disabled:opacity-50"
+        className="flex-1 h-11 px-4 rounded-full border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#0066CC] focus:ring-2 focus:ring-[#0066CC]/20 transition-all disabled:opacity-50"
       />
       <button
         onClick={send}
         disabled={!input.trim() || loading}
-        className="h-11 w-11 rounded-full bg-secondary text-on-secondary flex items-center justify-center transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+        className="h-11 w-11 rounded-full bg-[#0066CC] hover:bg-[#0052a3] text-white flex items-center justify-center transition-all shadow-md shadow-[#0066CC]/25 hover:shadow-lg active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none flex-shrink-0"
         aria-label="Send message"
       >
-        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
-          send
-        </span>
+        <Send style={{ width: 18, height: 18 }} />
       </button>
     </div>
   );
@@ -238,54 +235,44 @@ export function AssistantChat() {
       <button
         id="assistant-fab"
         onClick={() => (isOpen ? handleClose() : setIsOpen(true))}
-        className={`fixed bottom-6 right-6 z-[80] w-14 h-14 rounded-full bg-secondary text-on-secondary shadow-lg shadow-secondary/25 flex items-center justify-center transition-all duration-300 hover:brightness-110 hover:shadow-xl hover:scale-105 active:scale-95 ${
+        className={`fixed bottom-6 right-6 z-[80] w-14 h-14 rounded-full bg-[#0066CC] hover:bg-[#0052a3] text-white shadow-lg shadow-[#0066CC]/30 flex items-center justify-center transition-all duration-300 hover:shadow-xl hover:shadow-[#0066CC]/30 hover:scale-105 active:scale-95 ${
           !isOpen ? 'fab-pulse' : ''
         }`}
         aria-label={isOpen ? 'Close assistant' : 'Open assistant'}
       >
-        <span
-          className="material-symbols-outlined transition-transform duration-300"
-          style={{
-            fontSize: 26,
-            fontVariationSettings: "'FILL' 1",
-            transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
-          }}
-        >
-          {isOpen ? 'close' : 'smart_toy'}
-        </span>
+        <X
+          className="transition-transform duration-300"
+          style={{ width: 26, height: 26, transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', display: isOpen ? 'block' : 'none' }}
+        />
+        {!isOpen && <Bot style={{ width: 26, height: 26 }} strokeWidth={2.2} />}
       </button>
 
       {isOpen && (
         <div
           id="assistant-overlay"
-          className={`fixed bottom-24 right-6 z-[80] w-[400px] max-h-[560px] flex flex-col bg-surface-lowest rounded-2xl border border-outline-variant shadow-2xl overflow-hidden ${
+          className={`fixed bottom-24 right-6 z-[80] w-[400px] max-h-[560px] flex flex-col bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden ${
             isClosing ? 'chat-overlay-exit' : 'chat-overlay-enter'
           }`}
-          style={{ boxShadow: '0 8px 40px rgba(31, 42, 68, 0.12), 0 2px 8px rgba(31, 42, 68, 0.08)' }}
+          style={{ boxShadow: '0 8px 40px rgba(15, 23, 42, 0.15), 0 2px 8px rgba(15, 23, 42, 0.08)' }}
         >
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-outline-variant bg-surface-container-low/50">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/80">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
-                <span
-                  className="material-symbols-outlined text-secondary"
-                  style={{ fontSize: 18, fontVariationSettings: "'FILL' 1" }}
-                >
-                  smart_toy
-                </span>
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-teal-400 flex items-center justify-center shadow-sm shadow-[#0066CC]/25">
+                <Bot className="w-4 h-4 text-white" strokeWidth={2.2} />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-primary leading-tight">StockSavvy Assistant</h3>
-                <p className="text-[10px] text-on-surface-variant leading-tight">Powered by RAG</p>
+                <h3 className="text-sm font-bold text-slate-900 leading-tight">StockSavvy Assistant</h3>
+                <p className="text-[10px] text-slate-400 leading-tight flex items-center gap-1">
+                  Powered by RAG
+                </p>
               </div>
             </div>
             <button
               onClick={handleClose}
-              className="w-7 h-7 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"
+              className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
               aria-label="Close assistant"
             >
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-                close
-              </span>
+              <X style={{ width: 18, height: 18 }} />
             </button>
           </div>
 
@@ -293,7 +280,7 @@ export function AssistantChat() {
             <ChatList emptyHint="I can answer questions about your inventory, vendors, contracts, and more — grounded in your knowledge base." />
           </div>
 
-          <div className="border-t border-outline-variant bg-surface-container-low/30 px-4 py-3">
+          <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-3">
             <ChatInput inputRef={inputRef} />
           </div>
         </div>
@@ -311,38 +298,37 @@ export default function Assistant() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-4xl h-[calc(100vh-8rem)]">
+    <div className="mx-auto max-w-4xl h-[calc(100vh-8.75rem)] flex flex-col">
       <div className="mb-5">
-        <h1 className="text-xl font-semibold text-primary">AI Assistant</h1>
-        <p className="text-sm text-on-surface-variant mt-1">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+          AI Assistant
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200 text-xs font-semibold">
+            <Sparkles className="w-3 h-3" />
+            AI-Powered
+          </span>
+        </h1>
+        <p className="text-sm text-slate-500 mt-1">
           Ask questions about your inventory, vendors, and contracts. Answers are grounded in your
           knowledge base.
         </p>
       </div>
 
-      <div className="flex flex-col h-full rounded-xl border border-outline-variant bg-surface-lowest overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant bg-surface-container-low/40">
+      <div className="flex flex-col flex-1 min-h-0 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/80">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-secondary/10 flex items-center justify-center">
-              <span
-                className="material-symbols-outlined text-secondary"
-                style={{ fontSize: 20, fontVariationSettings: "'FILL' 1" }}
-              >
-                smart_toy
-              </span>
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-teal-400 flex items-center justify-center shadow-sm shadow-[#0066CC]/25">
+              <Bot className="w-5 h-5 text-white" strokeWidth={2.2} />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-primary leading-tight">StockSavvy Assistant</h2>
-              <p className="text-[11px] text-on-surface-variant leading-tight">Powered by RAG — grounded answers</p>
+              <h2 className="text-sm font-bold text-slate-900 leading-tight">StockSavvy Assistant</h2>
+              <p className="text-[11px] text-slate-400 leading-tight">Powered by RAG — grounded answers</p>
             </div>
           </div>
           <button
             onClick={() => useAssistantStore.getState().clear()}
-            className="flex items-center gap-1 text-xs font-medium text-on-surface-variant hover:text-primary transition-colors"
+            className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#0066CC] transition-colors"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
-              delete_sweep
-            </span>
+            <Trash2 style={{ width: 14, height: 14 }} />
             Clear
           </button>
         </div>
@@ -351,7 +337,7 @@ export default function Assistant() {
           <ChatList emptyHint="I can answer questions about your inventory, vendors, contracts, and more — grounded in your knowledge base." />
         </div>
 
-        <div className="border-t border-outline-variant bg-surface-container-low/30 px-6 py-4">
+        <div className="border-t border-slate-100 bg-slate-50/60 px-6 py-4">
           <ChatInput inputRef={inputRef} />
         </div>
       </div>

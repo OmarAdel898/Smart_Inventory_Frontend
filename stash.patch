@@ -1,0 +1,41 @@
+diff --git a/src/api/client.ts b/src/api/client.ts
+index 9545e72..7f3b646 100644
+--- a/src/api/client.ts
++++ b/src/api/client.ts
+@@ -36,14 +36,15 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
+     body: body ? JSON.stringify(body) : undefined,
+   });
+ 
++  const json = await res.json().catch(() => null);
++
+   if (!res.ok) {
+-    const data = await res.json().catch(() => null);
+-    const messages = data?.message;
+-    const message = Array.isArray(messages) ? messages[0] : messages || `Request failed (${res.status})`;
+-    throw new ApiError(message, res.status, data);
++    const message = json?.meta?.message || json?.message || `Request failed (${res.status})`;
++    throw new ApiError(message, res.status, json?.meta || json);
+   }
+ 
+-  return res.json();
++  if (json?.success === true) return json.data as T;
++  return json as T;
+ }
+ 
+ export const api = {
+diff --git a/src/pages/Vendors.tsx b/src/pages/Vendors.tsx
+index c5aeaf3..a7c9951 100644
+--- a/src/pages/Vendors.tsx
++++ b/src/pages/Vendors.tsx
+@@ -117,8 +117,9 @@ export default function Vendors() {
+         throw new Error(message);
+       }
+ 
+-      const data = (await response.json()) as Vendor[];
+-      setVendors(Array.isArray(data) ? data : []);
++      const json = await response.json() as { success: boolean; data: Vendor[] };
++      const vendors = json?.success === true ? json.data : json;
++      setVendors(Array.isArray(vendors) ? vendors : []);
+     } catch (err) {
+       if (err instanceof DOMException && err.name === 'AbortError') {
+         return;
